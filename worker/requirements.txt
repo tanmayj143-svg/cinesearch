@@ -1,0 +1,13 @@
+psycopg[binary]
+scenedetect[opencv-headless]
+faster-whisper
+torch
+torchaudio
+torchvision
+transformers>=4.49,<5
+accelerate
+bitsandbytes
+sentence-transformers
+httpx
+qwen-vl-utils
+hf_transfer

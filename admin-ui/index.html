@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CineSearch Admin</title>
+<style>
+:root{--bg:#0e1116;--panel:#171c24;--line:#262e3a;--fg:#d7dee8;--dim:#7d8896;--acc:#4da3ff;--bad:#ff5c5c;--ok:#5ad18a}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui;padding:20px;max-width:1100px;margin:auto}
+h1{font-size:18px}h2{font-size:15px;color:var(--dim);margin-top:28px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.st-done{color:var(--ok)}.st-failed{color:var(--bad)}.st-active{color:var(--acc)}
+button{background:var(--acc);color:#000;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+input,select{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:7px}
+code{color:var(--acc)}
+pre{white-space:pre-wrap;color:var(--bad);font-size:11px;margin:4px 0}
+</style></head><body>
+<h1>CineSearch — Admin <button class="ghost" style="float:right" onclick="location='/'">search UI</button></h1>
+
+<div class="panel" id="worker">
+  <h2 style="margin-top:0">Worker</h2>
+  <span id="wstate">…</span>
+  <button class="ghost" onclick="fetch('/api/admin/pause?paused=true',{method:'POST'}).then(poll)">pause</button>
+  <button onclick="fetch('/api/admin/pause?paused=false',{method:'POST'}).then(poll)">resume</button>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Submit file for ingest</h2>
+  <input id="path" size="50" placeholder="sources/CLIP_001.mov (relative to library)">
+  <select id="tier"></select>
+  <button onclick="submit()">submit</button> <span id="subres"></span>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Model tier</h2>
+  <select id="mtier" onchange="setTier(this.value)">
+    <option value="tier_full">tier_full — Qwen7B + ShotVL3B + whisper-large (12GB)</option>
+    <option value="tier_balanced">tier_balanced — Qwen3B + whisper-medium (8GB)</option>
+    <option value="tier_minimal">tier_minimal — Qwen3B + whisper-small (6GB)</option>
+  </select> <span id="mtmsg"></span>
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Queue</h2>
+  <table id="q"><thead><tr><th>#</th><th>file</th><th>status</th><th>stages</th><th></th></tr></thead><tbody></tbody></table>
+</div>
+
+<script>
+async function poll(){
+  const d = await (await fetch('/api/admin/queue')).json();
+  document.getElementById('wstate').innerHTML =
+    `<b>${d.worker.paused?'PAUSED':'RUNNING'}</b>` +
+    (d.worker.model ? ` — GPU: <code>${d.worker.model}</code>` : ' — GPU idle');
+  document.querySelector('#q tbody').innerHTML = d.queue.map(j=>{
+    const stages = (j.events||[]).map(e=>
+      `<span class="st-${e.status==='done'?'done':e.status==='failed'?'failed':'active'}">${e.stage}:${e.status}</span>` +
+      (e.err?`<pre>${e.err.slice(-400)}</pre>`:'')).join('<br>');
+    return `<tr><td>${j.queue_id}</td><td><code>${j.code}</code></td>
+      <td class="st-${j.status==='done'?'done':j.status==='failed'?'failed':'active'}">${j.status}</td>
+      <td>${stages}</td>
+      <td>${j.status==='failed'?`<button class="ghost" onclick="fetch('/api/admin/retry/${j.queue_id}',{method:'POST'}).then(poll)">retry</button>`:''}</td></tr>`;
+  }).join('');
+}
+async function setTier(t){
+  const r = await fetch('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tier:t})});
+  document.getElementById('mtmsg').textContent = r.ok ? 'saved — applies to next job' : 'error';
+}
+async function submit(){
+  const p = document.getElementById('path').value;
+  const r = await (await fetch(`/api/ingest?rel_path=${encodeURIComponent(p)}`,{method:'POST'})).json();
+  document.getElementById('subres').innerHTML = `assigned <code>${r.file_code}</code>`;
+  poll();
+}
+poll(); setInterval(poll, 4000);
+</script>
+</body></html>

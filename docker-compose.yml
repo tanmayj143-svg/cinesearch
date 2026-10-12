@@ -1,0 +1,73 @@
+name: cinesearch
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: cinesearch
+      POSTGRES_PASSWORD: cinesearch
+      POSTGRES_DB: cinesearch
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./schema:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cinesearch"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql://cinesearch:cinesearch@db:5432/cinesearch
+      LIBRARY_ROOT: /library
+    volumes:
+      - ${LIBRARY_ROOT}:/library
+      - ${HF_CACHE}:/hf_cache
+      - ./config.json:/app/config.json
+      - ./api:/app
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    environment:
+      DATABASE_URL: postgresql://cinesearch:cinesearch@db:5432/cinesearch
+      CINESEARCH_CONFIG: /app/config.json
+      LIBRARY_ROOT: /library
+      NVIDIA_VISIBLE_DEVICES: all
+      HF_HUB_DOWNLOAD_TIMEOUT: "60"
+      HF_HUB_ENABLE_HF_TRANSFER: "1"
+      LD_LIBRARY_PATH: /opt/conda/lib/python3.11/site-packages/nvidia/cublas/lib:/opt/conda/lib/python3.11/site-packages/nvidia/cudnn/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+    volumes:
+      - ${LIBRARY_ROOT}:/library
+      - ${HF_CACHE}:/hf_cache
+      - ./config.json:/app/config.json
+      - ./worker:/app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8787:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./search-ui:/usr/share/nginx/html:ro
+      - ./admin-ui:/usr/share/nginx/html-admin:ro
+      - ${LIBRARY_ROOT}:/library:ro
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  db_data:
