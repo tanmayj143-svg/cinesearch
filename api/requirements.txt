@@ -2,4 +2,3 @@ fastapi
 uvicorn[standard]
 psycopg[binary]
 sentence-transformers
-torch --index-url https://download.pytorch.org/whl/cpu

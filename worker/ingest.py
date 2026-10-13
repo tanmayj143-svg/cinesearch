@@ -27,6 +27,60 @@ LIB = CFG["library_root"]
 STAGES = ["probe", "scenedetect", "whisper", "shotvl", "vlm",
           "clap", "embed", "narrative", "proxy", "joins"]
 
+# ---------- model residency cache ----------
+# When CFG["residency_models"] lists a stage's model, it stays loaded in this
+# dict between stages/jobs and is reused instead of cold-loading. Models not in
+# the profile are released after their stage (original sequential behaviour).
+GPU_CACHE = {}
+GPU_TOTAL_GB = None
+
+def gpu_total_gb():
+    global GPU_TOTAL_GB
+    if GPU_TOTAL_GB is None:
+        try:
+            import pynvml
+            pynvml.nvmlInit()
+            GPU_TOTAL_GB = pynvml.nvmlDeviceGetMemoryInfo(
+                pynvml.nvmlDeviceGetHandleByIndex(0)).total / 1024**3
+        except Exception:
+            try:
+                out = subprocess.run(["nvidia-smi", "--query-gpu=memory.total",
+                                      "--format=csv,noheader,nounits"],
+                                     capture_output=True, text=True, timeout=10).stdout
+                GPU_TOTAL_GB = float(out.splitlines()[0]) / 1024
+            except Exception:
+                GPU_TOTAL_GB = 12.0   # conservative default if detection fails
+    return GPU_TOTAL_GB
+
+def cached(key: str, loader):
+    """Return the cached model for key, or load it via loader(). If residency
+    does not include this key, the caller must release it (see release_if_needed)."""
+    if key in GPU_CACHE:
+        return GPU_CACHE[key]
+    total = gpu_total_gb()
+    if CFG["residency_vram_gb"] > total:
+        raise RuntimeError(
+            f"residency profile needs ~{CFG['residency_vram_gb']:.1f}GB but GPU has "
+            f"{total:.1f}GB — lower residency in the admin panel")
+    mdl = loader()
+    GPU_CACHE[key] = mdl
+    return mdl
+
+def resident(key: str) -> bool:
+    return key in CFG.get("residency_models", [])
+
+def release_if_needed(key: str):
+    """Drop the model unless residency profile keeps it loaded."""
+    if resident(key):
+        return
+    if key in GPU_CACHE:
+        del GPU_CACHE[key]
+        try:
+            import torch
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+
 def log(conn, queue_id, stage, status, detail=None, error=None):
     tail = None
     if error:
@@ -59,6 +113,15 @@ def st_scenedetect(conn, f):
     from scenedetect import detect, ContentDetector
     src = os.path.join(LIB, f["rel_path"])
     scenes = detect(src, ContentDetector(threshold=27))
+    if not scenes:
+        # cut-free source (test footage, single-take clips): treat the whole
+        # file as one shot so downstream stages still produce a searchable atom
+        dur = conn.execute("SELECT duration_s FROM files WHERE file_id=%s",
+                           (f["file_id"],)).fetchone()["duration_s"] or 0
+        class _FT:
+            def __init__(self, s): self._s = float(s)
+            def get_seconds(self): return self._s
+        scenes = [(_FT(0.0), _FT(dur))]
     for i, (a, b) in enumerate(scenes):
         conn.execute("INSERT INTO shots (file_id, shot_seq, tc_in, tc_out) VALUES (%s,%s,%s,%s)",
                      (f["file_id"], i+1, a.get_seconds(), b.get_seconds()))
@@ -76,7 +139,6 @@ def st_scenedetect(conn, f):
                      (f"derived/thumbs/{f['file_id']}/{sid}.jpg", sid))
 
 def st_whisper(conn, f):
-    from faster_whisper import WhisperModel
     src = os.path.join(LIB, f["rel_path"])
     has_audio = subprocess.run(["ffprobe","-v","error","-select_streams","a",
         "-show_entries","stream=index","-of","csv=p=0", src],
@@ -85,24 +147,30 @@ def st_whisper(conn, f):
         log(conn, f["queue_id"], "whisper", "done", "no audio stream — skipped")
         return
     set_model(conn, "whisper")
-    model = WhisperModel(CFG["models"]["whisper"], device="cuda",
-                         compute_type="int8_float16")
+    def _load():
+        from faster_whisper import WhisperModel
+        return WhisperModel(CFG["models"]["whisper"], device="cuda",
+                            compute_type="int8_float16")
+    model = cached("whisper", _load)
     segs, _ = model.transcribe(src, word_timestamps=True, vad_filter=True)
     for s in segs:
         conn.execute("""INSERT INTO utterances (file_id, tc_in, tc_out, text)
                         VALUES (%s,%s,%s,%s)""",
                      (f["file_id"], s.start, s.end, s.text.strip()))
-    del model
+    release_if_needed("whisper")
 
 def st_shotvl(conn, f):
     """Cinematic tags from a frame strip fed as multiple images (temporal reasoning
     without the PyAV video path)."""
     import torch, tempfile, glob, shutil, subprocess as sp
-    from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
     set_model(conn, "shotvl")
-    proc = AutoProcessor.from_pretrained(CFG["models"]["shotvl"])
-    mdl = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        CFG["models"]["shotvl"], torch_dtype=torch.bfloat16, device_map="cuda")
+    def _load():
+        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+        proc = AutoProcessor.from_pretrained(CFG["models"]["shotvl"])
+        mdl = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            CFG["models"]["shotvl"], torch_dtype=torch.bfloat16, device_map="cuda")
+        return proc, mdl
+    proc, mdl = cached("shotvl", _load)
     src = os.path.join(LIB, f["rel_path"])
     rows = conn.execute("SELECT shot_id, tc_in, tc_out FROM shots WHERE file_id=%s ORDER BY shot_seq",
                         (f["file_id"],)).fetchall()
@@ -138,19 +206,22 @@ def st_shotvl(conn, f):
         except (json.JSONDecodeError, ValueError):
             log(conn, f["queue_id"], "shotvl", "failed", f"parse shot {sid}")
         shutil.rmtree(tmpdir, ignore_errors=True)
-    del mdl; torch.cuda.empty_cache()
+    release_if_needed("shotvl")
 
 def st_vlm(conn, f):
     """Description/mood/objects via in-process Qwen2.5-VL (4-bit), keyframe only."""
     import torch
-    from transformers import (Qwen2_5_VLForConditionalGeneration, AutoProcessor,
-                              BitsAndBytesConfig)
     set_model(conn, "qwen-vl")
-    bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                             bnb_4bit_compute_dtype=torch.bfloat16)
-    proc = AutoProcessor.from_pretrained(CFG["models"]["vlm"])
-    mdl = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        CFG["models"]["vlm"], quantization_config=bnb, device_map="cuda")
+    def _load():
+        from transformers import (Qwen2_5_VLForConditionalGeneration, AutoProcessor,
+                                  BitsAndBytesConfig)
+        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                 bnb_4bit_compute_dtype=torch.bfloat16)
+        proc = AutoProcessor.from_pretrained(CFG["models"]["vlm"])
+        mdl = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            CFG["models"]["vlm"], quantization_config=bnb, device_map="cuda")
+        return proc, mdl
+    proc, mdl = cached("vlm", _load)
     rows = conn.execute("SELECT shot_id, thumb_path FROM shots WHERE file_id=%s ORDER BY shot_seq",
                         (f["file_id"],)).fetchall()
     q = ("Describe this film frame for an editor's search database. JSON: "
@@ -178,14 +249,17 @@ def st_vlm(conn, f):
                           tags.get("narrative_role"), sid))
         except (json.JSONDecodeError, ValueError):
             log(conn, f["queue_id"], "vlm", "failed", f"parse shot {sid}")
-    del mdl; torch.cuda.empty_cache()
+    release_if_needed("vlm")
 
 def st_clap(conn, f):
     import torch, torchaudio, tempfile, subprocess as sp
-    from transformers import ClapModel, ClapProcessor
     set_model(conn, "clap")
-    mdl = ClapModel.from_pretrained("laion/clap-htsat-unfused").to("cuda")
-    proc = ClapProcessor.from_pretrained("laion/clap-htsat-unfused")
+    def _load():
+        from transformers import ClapModel, ClapProcessor
+        mdl = ClapModel.from_pretrained("laion/clap-htsat-unfused").to("cuda")
+        proc = ClapProcessor.from_pretrained("laion/clap-htsat-unfused")
+        return mdl, proc
+    mdl, proc = cached("clap", _load)
     src = os.path.join(LIB, f["rel_path"])
     rows = conn.execute("SELECT utterance_id, tc_in, tc_out FROM utterances WHERE file_id=%s",
                         (f["file_id"],)).fetchall()
@@ -201,7 +275,7 @@ def st_clap(conn, f):
         v = (vec/vec.norm()).cpu().tolist()
         conn.execute("UPDATE utterances SET audio_vec=%s WHERE utterance_id=%s", (v, uid))
         os.unlink(tmp.name)
-    del mdl; torch.cuda.empty_cache()
+    release_if_needed("clap")
 
 def st_embed(conn, f):
     from sentence_transformers import SentenceTransformer
@@ -222,13 +296,16 @@ def st_embed(conn, f):
 def st_narrative(conn, f):
     """Text-only LLM pass over the compressed timeline -> scenes (in-process, 4-bit)."""
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     set_model(conn, "qwen-narrative")
-    bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                             bnb_4bit_compute_dtype=torch.bfloat16)
-    tok = AutoTokenizer.from_pretrained(CFG["models"]["narrative"])
-    mdl = AutoModelForCausalLM.from_pretrained(
-        CFG["models"]["narrative"], quantization_config=bnb, device_map="cuda")
+    def _load():
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                 bnb_4bit_compute_dtype=torch.bfloat16)
+        tok = AutoTokenizer.from_pretrained(CFG["models"]["narrative"])
+        mdl = AutoModelForCausalLM.from_pretrained(
+            CFG["models"]["narrative"], quantization_config=bnb, device_map="cuda")
+        return tok, mdl
+    tok, mdl = cached("narrative", _load)
     rows = conn.execute("""
         SELECT s.tc_in, s.shot_size, s.camera_movement, s.description,
                string_agg(u.text, ' ' ORDER BY u.tc_in) AS dlg
@@ -253,7 +330,7 @@ def st_narrative(conn, f):
                         sequence_type, summary, source) VALUES (%s,%s,%s,%s,%s,%s,'llm')""",
                      (f["file_id"], _parse_tc(sc["start_tc"]), _parse_tc(sc["end_tc"]),
                       sc.get("narrative_label"), sc.get("sequence_type"), sc.get("summary")))
-    del mdl; torch.cuda.empty_cache()
+    release_if_needed("narrative")
 
 def st_proxy(conn, f):
     src = os.path.join(LIB, f["rel_path"])
@@ -303,9 +380,19 @@ def _connect():
     raise SystemExit("database unreachable")
 
 def run():
+    global CFG
     os.makedirs(os.path.join(CFG["derived_root"], "waveforms"), exist_ok=True)
     with _connect() as conn:
         while True:
+            old_tier = CFG.get("tier")
+            CFG.update(load())   # pick up tier/residency changes from admin UI
+            if old_tier and old_tier != CFG.get("tier"):
+                GPU_CACHE.clear()    # resident models belong to the previous tier
+                try:
+                    import torch; torch.cuda.empty_cache()
+                except Exception:
+                    pass
+            resident = list(GPU_CACHE.keys())
             paused = conn.execute("SELECT paused FROM worker_state WHERE id=1").fetchone()["paused"]
             job = None if paused else conn.execute("""
                 SELECT q.queue_id, f.* FROM ingest_queue q
@@ -313,7 +400,7 @@ def run():
                 WHERE q.status='pending' ORDER BY q.priority, q.queue_id
                 LIMIT 1""").fetchone()
             if not job:
-                set_model(conn, None)
+                set_model(conn, f"idle [{','.join(resident)}]" if resident else None)
                 time.sleep(5); continue
             f = dict(job)
             conn.execute("UPDATE ingest_queue SET status='active' WHERE queue_id=%s",

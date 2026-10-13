@@ -44,6 +44,13 @@ td{padding:8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:midd
 </div>
 
 <div class="card">
+  <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Media drop <span style="font-size:11px;color:var(--fg-dim);font-weight:300">— files in /media on the server; pick into the library</span></h2>
+  <table><thead><tr><th>Item</th><th>Kind</th><th>Videos</th><th>Size</th><th></th></tr></thead><tbody id="mediaBody"><tr><td colspan="5" class="status-dim">Loading…</td></tr></tbody></table>
+  <div class="row" style="margin-top:10px"><button class="ghost" onclick="loadMedia()">Refresh /media</button>
+  <span id="mediamsg" class="status-dim" style="font-size:12px"></span></div>
+</div>
+
+<div class="card">
   <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Eligible Video Files <span style="font-size:11px;color:var(--fg-dim);font-weight:300">(recursive; non-video excluded)</span></h2>
   <table><thead><tr><th><input type="checkbox" id="selall" checked onchange="toggleAll(this)"></th><th>File</th><th>Size</th><th>Assigned File ID (prefix + number)</th></tr></thead><tbody id="fileBody"><tr><td colspan="4" class="status-dim">Choose a folder and click "Scan Folder".</td></tr></tbody></table>
   <div class="row" style="margin-top:16px;justify-content:space-between">
@@ -130,6 +137,26 @@ async function cleanFolder(){
     scanFolder();
   }
 }
-loadFolders();
+async function loadMedia(){
+  const tbody=document.getElementById('mediaBody');
+  try{
+    const d=await(await fetch('/api/admin/media')).json();
+    tbody.innerHTML=d.items.length?d.items.map(m=>{const nm=m.name.replace(/'/g,"\\'");return `<tr>
+      <td><strong>${m.name}</strong></td><td>${m.kind}</td>
+      <td>${m.kind==='folder'?m.videos:(m.video?'1':'—')}</td>
+      <td>${m.size_bytes!=null?fmtSize(m.size_bytes):'—'}</td>
+      <td><button class="tiny ghost" onclick="pickMedia('${nm}')">Move to sources/</button></td></tr>`}).join('')
+      :`<tr><td colspan="5" class="status-dim">/media is empty — populate ${d.media_root} on the server (host: /media/video-pipeline/cinesearch/media).</td></tr>`;
+  }catch(e){tbody.innerHTML='<tr><td colspan="5" class="status-bad">media endpoint unavailable</td></tr>';}
+}
+async function pickMedia(name){
+  if(!confirm(`Move ${name} from /media into the library sources/?`))return;
+  const r=await fetch(`/api/admin/media/pick?name=${encodeURIComponent(name)}`,{method:'POST'});
+  const d=await r.json();
+  document.getElementById('mediamsg').innerHTML=r.ok
+    ?`<b class="status-ok">Moved</b> → ${d.to}`:`<b class="status-bad">${d.detail||r.status}</b>`;
+  loadMedia();scanFolder();
+}
+loadFolders();loadMedia();
 </script>
 </body></html>

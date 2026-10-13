@@ -174,6 +174,22 @@ def ingest(rel_path: str, scheme_id: int | None = None, priority: int = 100,
             VALUES (%s,%s) RETURNING queue_id""", (fid, priority)).fetchone()[0]
     return {"file_code": code, "file_id": fid, "queue_id": qid}
 
+# Mirrors worker/config.py RESIDENCY_PROFILES for validation + admin display.
+# (api and worker are separate containers; worker re-reads config.json per loop.)
+RESIDENCY_PROFILES = {
+    "sequential":   {"label": "Sequential — one GPU model at a time (12GB safe)", "gpu_gb": 12},
+    "pair_vlm_shot":{"label": "ShotVL + Qwen-VL resident together (~10GB, 3B tier)", "gpu_gb": 10},
+    "trio_vlm_narr":{"label": "ShotVL + Qwen-VL + Narrative resident (~16GB GPU)", "gpu_gb": 16},
+    "full_24":      {"label": "All GPU models resident simultaneously (24GB GPU)", "gpu_gb": 24},
+}
+
+@app.get("/api/admin/residency")
+def residency():
+    cfg = get_config()
+    return {"current": cfg.get("residency", "sequential"),
+            "tier": cfg.get("tier", "tier_full"),
+            "profiles": RESIDENCY_PROFILES}
+
 @app.get("/api/admin/config")
 def get_config():
     cfg_path = "/app/config.json"
@@ -185,6 +201,53 @@ def set_config(cfg: dict):
     cur = get_config(); cur.update(cfg)
     json.dump(cur, open(cfg_path, "w"), indent=2)
     return cur
+
+MEDIA = os.environ.get("MEDIA_ROOT", "/media")
+VIDEO_EXTS = {".mov", ".mp4", ".mkv", ".avi", ".mxf", ".m4v", ".webm", ".mpg", ".mpeg", ".ts"}
+
+@app.get("/api/admin/media")
+def media_list():
+    """Contents of the /media drop folder (top level, for the ingest UI)."""
+    out = []
+    try:
+        for name in sorted(os.listdir(MEDIA)):
+            p = os.path.join(MEDIA, name)
+            if os.path.isdir(p):
+                vids = sum(1 for d, _, ns in os.walk(p) for n in ns
+                           if os.path.splitext(n)[1].lower() in VIDEO_EXTS)
+                out.append(dict(name=name, kind="folder", videos=vids))
+            else:
+                st = os.stat(p)
+                out.append(dict(name=name, kind="file",
+                                video=os.path.splitext(name)[1].lower() in VIDEO_EXTS,
+                                size_bytes=st.st_size))
+    except OSError:
+        pass
+    return {"media_root": MEDIA, "items": out}
+
+@app.post("/api/admin/media/pick")
+def media_pick(name: str):
+    """Move a folder or video file from /media into library sources/ (flattened).
+    shutil.move, not os.rename: /media and /library are separate bind mounts."""
+    import shutil
+    src = os.path.realpath(os.path.join(MEDIA, name))
+    if not src.startswith(os.path.realpath(MEDIA)):
+        raise HTTPException(400, "name escapes media root")
+    if not os.path.exists(src):
+        raise HTTPException(404, f"not in /media: {name}")
+    if os.path.isdir(src):
+        dest = os.path.join(LIB, "sources", name)
+        if os.path.exists(dest):
+            raise HTTPException(409, f"sources/{name} already exists")
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.move(src, dest)
+        return {"moved": name, "to": os.path.relpath(dest, LIB)}
+    dest = os.path.join(LIB, "sources", os.path.basename(name))
+    if os.path.exists(dest):
+        raise HTTPException(409, f"already exists: {os.path.relpath(dest, LIB)}")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.move(src, dest)
+    return {"moved": name, "to": os.path.relpath(dest, LIB)}
 
 @app.get("/api/admin/folders")
 def library_folders():
@@ -258,6 +321,104 @@ def folder_cleanup(folder: str):
         for old, new in moved:
             conn.execute("UPDATE files SET rel_path=%s WHERE rel_path=%s", (new, old))
     return {"folder": folder, "moved": len(moved), "deleted": deleted}
+
+@app.get("/api/admin/schemes")
+def schemes():
+    with psycopg.connect(DB) as conn:
+        rows = conn.execute("""SELECT scheme_id, name, pattern, prefix, counter_pad,
+                               counter_next, is_default, rename_on_ingest
+                               FROM id_schemes ORDER BY scheme_id""").fetchall()
+    return {"schemes": [dict(scheme_id=r[0], name=r[1], pattern=r[2], prefix=r[3],
+                             pad=r[4], next=r[5], default=r[6], rename=r[7]) for r in rows]}
+
+@app.post("/api/admin/schemes")
+def scheme_set(name: str, prefix: str | None = None, pad: int | None = None,
+               next: int | None = None, rename: bool | None = None,
+               set_default: bool = False):
+    with psycopg.connect(DB, autocommit=True) as conn:
+        row = conn.execute("SELECT scheme_id FROM id_schemes WHERE name=%s", (name,)).fetchone()
+        if row:
+            # update only the fields actually provided
+            sets, args = [], []
+            for col, val in (("prefix", prefix), ("counter_pad", pad),
+                             ("counter_next", next), ("rename_on_ingest", rename)):
+                if val is not None:
+                    sets.append(f"{col}=%s"); args.append(val)
+            if sets:
+                args.append(row[0])
+                conn.execute(f"UPDATE id_schemes SET {', '.join(sets)} WHERE scheme_id=%s", args)
+            sid = row[0]
+        else:
+            sid = conn.execute("""INSERT INTO id_schemes (name, prefix, counter_pad,
+                                counter_next, rename_on_ingest)
+                                VALUES (%s,%s,%s,%s,%s) RETURNING scheme_id""",
+                               (name, prefix or "FILM", pad or 4, next or 1,
+                                True if rename is None else rename)).fetchone()[0]
+        if set_default:
+            conn.execute("UPDATE id_schemes SET is_default=(scheme_id=%s)", (sid,))
+    return {"scheme_id": sid, "name": name}
+
+@app.get("/api/admin/stats")
+def stats():
+    with psycopg.connect(DB) as conn:
+        counts = conn.execute("""
+            SELECT (SELECT count(*) FROM files),
+                   (SELECT count(*) FROM shots),
+                   (SELECT count(*) FROM utterances),
+                   (SELECT count(*) FROM scenes),
+                   (SELECT count(*) FROM ingest_queue WHERE status='pending'),
+                   (SELECT count(*) FROM ingest_queue WHERE status='active'),
+                   (SELECT count(*) FROM ingest_queue WHERE status='failed'),
+                   (SELECT coalesce(sum(size_bytes),0) FROM files),
+                   (SELECT count(*) FROM corrections)
+        """).fetchone()
+        top_moods = [dict(mood=r[0], n=r[1]) for r in conn.execute("""
+            SELECT mood, count(*) FROM shots WHERE mood IS NOT NULL AND mood<>''
+            GROUP BY mood ORDER BY count(*) DESC LIMIT 8""").fetchall()]
+        top_moves = [dict(movement=r[0], n=r[1]) for r in conn.execute("""
+            SELECT camera_movement, count(*) FROM shots WHERE camera_movement IS NOT NULL
+              AND camera_movement<>''
+            GROUP BY camera_movement ORDER BY count(*) DESC LIMIT 8""").fetchall()]
+    return {"files": counts[0], "shots": counts[1], "utterances": counts[2],
+            "scenes": counts[3], "pending": counts[4], "active": counts[5],
+            "failed": counts[6], "source_bytes": counts[7], "corrections": counts[8],
+            "top_moods": top_moods, "top_movements": top_moves}
+
+@app.get("/api/admin/library")
+def library_list():
+    with psycopg.connect(DB) as conn:
+        rows = conn.execute("""
+            SELECT f.file_id, f.file_code, f.rel_path, f.status, f.duration_s,
+                   f.size_bytes,
+                   (SELECT count(*) FROM shots s WHERE s.file_id=f.file_id) AS shots,
+                   (SELECT count(*) FROM utterances u WHERE u.file_id=f.file_id) AS utts
+            FROM files f ORDER BY f.file_code""").fetchall()
+    return {"files": [dict(file_id=r[0], code=r[1], path=r[2], status=r[3],
+                           duration_s=r[4], size_bytes=r[5], shots=r[6],
+                           utterances=r[7]) for r in rows]}
+
+@app.post("/api/admin/library/{file_id}/delete")
+def library_delete(file_id: int):
+    """Remove a file's DB rows (shots/utterances/scenes via FK cascade) and its
+    derived media; the source file itself is left on disk."""
+    with psycopg.connect(DB, autocommit=True) as conn:
+        rel = conn.execute("SELECT rel_path, file_code FROM files WHERE file_id=%s",
+                           (file_id,)).fetchone()
+        if not rel:
+            raise HTTPException(404, f"file_id {file_id} not found")
+        conn.execute("DELETE FROM files WHERE file_id=%s", (file_id,))
+    import shutil
+    for sub in ("proxies", "waveforms"):
+        p = os.path.join(LIB, "derived", sub)
+        if os.path.isdir(p):
+            for name in os.listdir(p):
+                if name.startswith(f"{file_id}."):
+                    fp = os.path.join(p, name)
+                    (shutil.rmtree if os.path.isdir(fp) else os.remove)(fp)
+    tdir = os.path.join(LIB, "derived", "thumbs", str(file_id))
+    if os.path.isdir(tdir):
+        shutil.rmtree(tdir, ignore_errors=True)
+    return {"deleted_file_code": rel[1], "note": "source file left on disk"}
 
 @app.get("/api/admin/queue")
 def queue():

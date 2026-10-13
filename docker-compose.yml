@@ -22,9 +22,11 @@ services:
     environment:
       DATABASE_URL: postgresql://cinesearch:cinesearch@db:5432/cinesearch
       LIBRARY_ROOT: /library
+      MEDIA_ROOT: /media
     volumes:
       - ${LIBRARY_ROOT}:/library
       - ${HF_CACHE}:/hf_cache
+      - ${MEDIA_DROP:-/media/video-pipeline/cinesearch/media}:/media
       - ./config.json:/app/config.json
       - ./api:/app
     depends_on:
