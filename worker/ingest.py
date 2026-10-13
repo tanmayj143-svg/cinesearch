@@ -214,12 +214,16 @@ def st_vlm(conn, f):
     set_model(conn, "qwen-vl")
     def _load():
         from transformers import (Qwen2_5_VLForConditionalGeneration, AutoProcessor,
-                                  BitsAndBytesConfig)
-        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                 bnb_4bit_compute_dtype=torch.bfloat16)
+                                  AutoConfig, BitsAndBytesConfig)
+        cfg = AutoConfig.from_pretrained(CFG["models"]["vlm"])
+        kwargs = {"device_map": "cuda"}
+        if not getattr(cfg, "quantization_config", None):
+            bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                     bnb_4bit_compute_dtype=torch.bfloat16)
+            kwargs["quantization_config"] = bnb
         proc = AutoProcessor.from_pretrained(CFG["models"]["vlm"])
         mdl = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            CFG["models"]["vlm"], quantization_config=bnb, device_map="cuda")
+            CFG["models"]["vlm"], **kwargs)
         return proc, mdl
     proc, mdl = cached("vlm", _load)
     rows = conn.execute("SELECT shot_id, thumb_path FROM shots WHERE file_id=%s ORDER BY shot_seq",
@@ -298,12 +302,17 @@ def st_narrative(conn, f):
     import torch
     set_model(conn, "qwen-narrative")
     def _load():
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-        bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                 bnb_4bit_compute_dtype=torch.bfloat16)
+        from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                                  AutoConfig, BitsAndBytesConfig)
+        cfg = AutoConfig.from_pretrained(CFG["models"]["narrative"])
+        kwargs = {"device_map": "cuda"}
+        if not getattr(cfg, "quantization_config", None):
+            bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                     bnb_4bit_compute_dtype=torch.bfloat16)
+            kwargs["quantization_config"] = bnb
         tok = AutoTokenizer.from_pretrained(CFG["models"]["narrative"])
         mdl = AutoModelForCausalLM.from_pretrained(
-            CFG["models"]["narrative"], quantization_config=bnb, device_map="cuda")
+            CFG["models"]["narrative"], **kwargs)
         return tok, mdl
     tok, mdl = cached("narrative", _load)
     rows = conn.execute("""

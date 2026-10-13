@@ -11,10 +11,10 @@ CONFIG_PATH = os.environ.get("CINESEARCH_CONFIG", "/app/config.json")
 
 TIERS = {
     "tier_full": {          # 12GB GPU (RTX 3060)
-        "vlm":       "Qwen/Qwen2.5-VL-7B-Instruct",     # 4-bit ~5GB
-        "shotvl":    "Vchitect/ShotVL-3B",              # bf16 ~7GB
+        "vlm":       "unsloth/Qwen2.5-VL-7B-Instruct-bnb-4bit",     # 4-bit ~6.9GB
+        "shotvl":    "Vchitect/ShotVL-3B",                          # bf16 ~7GB
         "whisper":   "large-v3",
-        "narrative": "Qwen/Qwen2.5-7B-Instruct",        # 4-bit ~5GB
+        "narrative": "unsloth/Qwen2.5-7B-Instruct-bnb-4bit",        # 4-bit ~5.5GB
         "vlm_frames": 1,
     },
     "tier_balanced": {      # 8GB
@@ -35,8 +35,16 @@ TIERS = {
 
 # Per-stage GPU VRAM estimates (weights + working set), GB.
 _WHISPER_COST = {"large-v3": 4.5, "medium": 2.5, "small": 1.5}
-_VLM_COST = {"Qwen/Qwen2.5-VL-7B-Instruct": 5.5, "Qwen/Qwen2.5-VL-3B-Instruct": 3.0}
-_NARR_COST = {"Qwen/Qwen2.5-7B-Instruct": 5.5, "Qwen/Qwen2.5-3B-Instruct": 3.0}
+_VLM_COST = {
+    "Qwen/Qwen2.5-VL-7B-Instruct": 5.5,
+    "unsloth/Qwen2.5-VL-7B-Instruct-bnb-4bit": 5.5,
+    "Qwen/Qwen2.5-VL-3B-Instruct": 3.0,
+}
+_NARR_COST = {
+    "Qwen/Qwen2.5-7B-Instruct": 5.5,
+    "unsloth/Qwen2.5-7B-Instruct-bnb-4bit": 5.5,
+    "Qwen/Qwen2.5-3B-Instruct": 3.0,
+}
 _SHOTVL_COST = 7.0
 _CLAP_COST = 1.5
 
