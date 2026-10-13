@@ -132,8 +132,11 @@ the stages that are not already `done`.
 | GET | `/api/search_ui?...` | htmx HTML fragment of shot cards |
 | GET | `/api/shot/{id}/context` | full-file timeline for the player (shots, utterances, proxy, waveform) |
 | GET | `/api/export/fcp7xml?shot_ids=1,2,3` | FCP7 XML timeline for Resolve/Premiere |
-| POST | `/api/ingest?rel_path=&scheme_id=&priority=` | submit a file, assign ID, queue it |
+| POST | `/api/ingest?rel_path=&scheme_id=&priority=&file_code=` | submit a file, assign ID (or pass explicit `file_code` from admin batch), rename it, queue it |
 | GET | `/api/admin/queue` | worker state + queue with per-stage events |
+| GET | `/api/admin/folders` | top-level library folders (ingest UI picker) |
+| GET | `/api/admin/library_scan?folder=` | recursive eligible-video listing for a folder |
+| POST | `/api/admin/folder_cleanup?folder=` | flatten folder, delete non-video files + subdirs, sync DB paths |
 | POST | `/api/admin/pause?paused=` | pause/resume the worker |
 | POST | `/api/admin/retry/{queue_id}` | re-queue a failed job |
 | GET/POST | `/api/admin/config` | read/write the model tier |

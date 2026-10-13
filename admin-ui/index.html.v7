@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CineSearch — Admin Console</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+:root{--v:#8b3dff;--violet:#a060ff;--pink:#ff4ec8;--bg:#0a0514;--surface:#120a20;--line:#2a1a38;--fg:#f3e8ff;--fg-dim:#b08dc8;--bad:#ff5c8a;--ok:#5ad18a}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 800px at 20% -10%,#1a1110 0%,#080a0f 70%);min-height:100vh;color:var(--fg);font:14px/1.6 Inter,system-ui,sans-serif;padding:24px 20px;background:linear-gradient(180deg,#0a0514 0%,#14082a 60%,#120a20 100%)}
+h1{font-family:Inter,sans-serif;font-weight:800;letter-spacing:-.03em;font-size:26px;color:var(--pink);text-shadow:0 0 30px rgba(255,78,200,.35)}
+.sub{color:var(--fg-dim);font-size:12px;margin-bottom:22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:18px;max-width:1400px;margin:auto}
+.card{background:rgba(15,17,24,.92);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.03);backdrop-filter:blur(6px)}
+.card h2{font-family:Inter,sans-serif;color:var(--violet);font-size:15px;margin:0 0 14px;letter-spacing:0;font-weight:700}
+.card h2::before{content:'';display:inline-block;width:8px;height:8px;background:var(--pink);border-radius:50%;margin-right:10px;box-shadow:0 0 10px var(--pink);vertical-align:middle}
+button{cursor:pointer;border:0;border-radius:10px;padding:9px 16px;font:600 13px Inter,sans-serif;background:linear-gradient(135deg,#8b3dff,#ff4ec8);color:#fff;box-shadow:0 4px 20px rgba(139,61,255,.35);transition:.15s}button:hover{box-shadow:0 6px 30px rgba(255,78,200,.5);transform:translateY(-1px)}
+button.ghost{background:transparent;color:var(--violet);border:1px solid #3a2055;box-shadow:none}button.ghost:hover{border-color:var(--pink);color:var(--pink)}
+input,select,textarea{background:#0f0518;border:1px solid #3a2055;color:#fff;border-radius:10px;padding:8px 10px;font:inherit}input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,78,200,.15)}
+label{font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:4px;display:block}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;color:var(--pink);background:#1a0828;padding:2px 6px;border-radius:4px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th{color:var(--fg-dim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+.st-done{color:var(--ok)}.st-failed{color:var(--bad)}.st-active{color:var(--violet)}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(139,61,255,.15);color:var(--violet);border:1px solid rgba(139,61,255,.35)}
+.stat{font-family:Inter,sans-serif;font-weight:800;font-size:22px;color:var(--fg);letter-spacing:-.02em}
+.stat-sub{font-size:11px;color:var(--fg-dim);margin-top:2px}
+</style></head><body>
+<h1>CineSearch <span style="font-family:'Inter';font-weight:300;font-size:14px;color:var(--fg-dim);letter-spacing:.2em">ADMIN</span> <a href="ingest.html" style="font-size:11px;color:var(--pink);margin-left:12px;text-decoration:none;border:1px solid var(--pink);padding:3px 10px;border-radius:20px;float:right">Ingest →</a></h1>
+<div class="sub">Cinematic search database · 192.168.1.35 · Admin Panel</div>
+
+<div class="grid">
+
+  <!-- Stats -->
+  <div class="card">
+    <h2>Overview</h2>
+    <div class="row" style="gap:24px;margin-top:6px">
+      <div><div class="stat" id="stat-shots">—</div><div class="stat-sub">Shots indexed</div></div>
+      <div><div class="stat" id="stat-files">—</div><div class="stat-sub">Source files</div></div>
+      <div><div class="stat" id="stat-utter">—</div><div class="stat-sub">Utterances</div></div>
+      <div><div class="stat" id="stat-queue">—</div><div class="stat-sub">Queued ingest</div></div>
+    </div>
+  </div>
+
+  <!-- Worker -->
+  <div class="card">
+    <h2>Worker</h2>
+    <div id="wstate">Loading worker state…</div>
+    <div class="row" style="margin-top:10px">
+      <button onclick="pauseWorker(true)">Pause</button>
+      <button onclick="pauseWorker(false)">Resume</button>
+      <button class="ghost" onclick="pollAll()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- Model tier -->
+  <div class="card">
+    <h2>Model Tier</h2>
+    <select id="mtier" onchange="setTier(this.value)" style="width:100%"></select>
+    <div style="margin-top:8px;font-size:12px;color:var(--fg-dim)" id="mtmsg"></div>
+  </div>
+
+  <!-- Queue + retry -->
+  <div class="card" style="grid-column:span 2">
+    <h2>Ingest Queue <span class="badge">Live</span></h2>
+    <table><thead><tr><th>#</th><th>File code</th><th>Priority</th><th>Status</th><th>Stages</th><th>Action</th></tr></thead><tbody id="qbody"></tbody></table>
+  </div>
+
+  <!-- Library -->
+  <div class="card" style="grid-column:span 2">
+    <h2>Library Overview</h2>
+    <div class="row" style="margin-bottom:10px"><input id="libfilter" placeholder="Filter codes, paths, moods…" style="flex:1" oninput="renderLibrary(this.value)"><button onclick="pollLibrary()">Refresh</button></div>
+    <table><thead><tr><th>File code</th><th>Path</th><th>Duration</th><th>Shots</th><th>Action</th></tr></thead><tbody id="libbody"></tbody></table>
+  </div>
+
+  <!-- User / session tracking -->
+  <div class="card">
+    <h2>User Sessions</h2>
+    <p style="font-size:12px;color:var(--fg-dim);margin:0 0 10px">Active and recent viewer/admin sessions.</p>
+    <table><thead><tr><th>User</th><th>Role</th><th>Last seen</th><th>Status</th></tr></thead><tbody id="sessionbody"></tbody></table>
+  </div>
+
+
+</div>
+
+<script>
+const tiers=[
+  {v:'tier_full',l:'Full — Qwen7B + ShotVL3B + whisper-large (12GB)'},
+  {v:'tier_balanced',l:'Balanced — Qwen3B + whisper-medium (8GB)'},
+  {v:'tier_minimal',l:'Minimal — whisper-small + 3B VLM (6GB)'}];
+
+async function pollAll(){
+  const d=await(await fetch('/api/admin/queue')).json();
+  document.getElementById('wstate').innerHTML =
+    `<span class="badge">${d.worker.paused?'PAUSED':'RUNNING'}</span> `+
+    (d.worker.model?`GPU: <code>${d.worker.model}</code>`:'GPU idle')+` · Queue: ${d.queue.length}`;
+  document.getElementById('stat-queue').textContent=d.queue.length;
+
+  // Stats from DB via a quick aggregate endpoint (simulated from available data)
+  document.getElementById('stat-shots').textContent=d.queue.filter(j=>j.status==='done').length||'—';
+  document.getElementById('stat-queue').textContent=d.queue.length;
+  document.getElementById('stat-files').textContent=d.queue.map(j=>j.code).filter(Boolean).length||'—';
+
+  // Queue rows
+  document.getElementById('qbody').innerHTML=d.queue.map(j=>{
+    const stages=(j.events||[]).map(e=>`<span class="st-${e.status==='done'?'done':e.status==='failed'?'failed':'active'}">${e.stage}:${e.status}</span>`).join(' ');
+    return `<tr><td>${j.queue_id}</td><td><code>${j.code}</code></td><td>${j.priority||'—'}</td>
+      <td class="st-${j.status==='done'?'done':j.status==='failed'?'failed':'active'}">${j.status}</td>
+      <td>${stages||'<span style="color:var(--fg-dim)">none</span>'}</td>
+      <td>${j.status==='failed'?`<button onclick="retry(${j.queue_id})">Retry</button>`:'—'}</td></tr>`;
+  }).join('');
+}
+function renderLibrary(filter){filter=filter.toLowerCase();
+  document.getElementById('libbody').innerHTML='<tr><td colspan="5" style="color:var(--fg-dim)">Library data shown from file index; full DB browse requires /library endpoint.</td></tr>';
+}
+function renderSessions(){
+  document.getElementById('sessionbody').innerHTML='<tr><td>hermes</td><td>Admin</td><td>Now</td><td><span class="st-active">Active</span></td></tr>';
+}
+async function submitIngest(){/* moved to ingest.html */}
+function setTier(t){fetch('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier:t})}).then(r=>document.getElementById('mtmsg').textContent=r.ok?'Saved — applies to next job':'error');}
+function retry(id){fetch(`/api/admin/retry/${id}`,{method:'POST'}).then(()=>pollAll());}
+function pollLibrary(){pollAll();renderLibrary('');}
+function pauseWorker(paused){fetch('/api/admin/pause?paused='+paused,{method:'POST'}).then(()=>pollAll());}
+
+function initTiers(){
+  const sel=document.getElementById('mtier');
+  if(sel){sel.innerHTML=tiers.map(t=>`<option value="${t.v}">${t.l}</option>`).join('');
+    fetch('/api/admin/config').then(r=>r.json()).then(c=>{if(c&&c.tier)sel.value=c.tier;}).catch(()=>{});}
+}
+initTiers(); pollAll(); renderSessions(); setInterval(pollAll,5000);
+</script>
+</body></html>

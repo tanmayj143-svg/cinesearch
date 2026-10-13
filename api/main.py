@@ -1,6 +1,6 @@
 """CineSearch API: hybrid search, ingest submission, Resolve/Premiere export, admin."""
 import os, json
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import PlainTextResponse
 import psycopg
 from sentence_transformers import SentenceTransformer
@@ -141,15 +141,26 @@ def export_xml(shot_ids: str):
 # ---------------- ingest submit + admin ----------------
 
 @app.post("/api/ingest")
-def ingest(rel_path: str, scheme_id: int | None = None, priority: int = 100):
+def ingest(rel_path: str, scheme_id: int | None = None, priority: int = 100,
+           file_code: str | None = None):
+    src = os.path.join(LIB, rel_path)
+    if not os.path.isfile(src):
+        raise HTTPException(404, f"file not found in library: {rel_path}")
     with psycopg.connect(DB, autocommit=True) as conn:
         sch = conn.execute("""SELECT * FROM id_schemes
             WHERE scheme_id=%s OR (scheme_id IS NULL AND is_default)
             LIMIT 1""", (scheme_id,)).fetchone() or \
             conn.execute("SELECT * FROM id_schemes WHERE is_default LIMIT 1").fetchone()
-        code = f"{sch[3]}-{sch[5]:0{sch[4]}d}"
-        conn.execute("UPDATE id_schemes SET counter_next=counter_next+1 WHERE scheme_id=%s",
-                     (sch[0],))
+        if not sch:
+            raise HTTPException(400, "no default ID scheme configured (id_schemes is empty)")
+        if file_code:
+            code = file_code.strip()
+            if conn.execute("SELECT 1 FROM files WHERE file_code=%s", (code,)).fetchone():
+                raise HTTPException(409, f"file_code already exists: {code}")
+        else:
+            code = f"{sch[3]}-{sch[5]:0{sch[4]}d}"
+            conn.execute("UPDATE id_schemes SET counter_next=counter_next+1 WHERE scheme_id=%s",
+                         (sch[0],))
         orig = os.path.basename(rel_path)
         if sch[7]:  # rename_on_ingest
             stem, ext = os.path.splitext(orig)
@@ -174,6 +185,79 @@ def set_config(cfg: dict):
     cur = get_config(); cur.update(cfg)
     json.dump(cur, open(cfg_path, "w"), indent=2)
     return cur
+
+@app.get("/api/admin/folders")
+def library_folders():
+    """Top-level folders inside the library root (for the ingest folder picker)."""
+    out = []
+    try:
+        for name in sorted(os.listdir(LIB)):
+            if os.path.isdir(os.path.join(LIB, name)) and not name.startswith('derived'):
+                out.append(name)
+    except OSError:
+        pass
+    return {"folders": out}
+
+@app.get("/api/admin/library_scan")
+def library_scan(folder: str = "sources"):
+    """Recursively list eligible video files under a library folder."""
+    VIDEO_EXTS = {".mov", ".mp4", ".mkv", ".avi", ".mxf", ".m4v", ".webm", ".mpg", ".mpeg", ".ts"}
+    root = os.path.realpath(os.path.join(LIB, folder))
+    if not root.startswith(os.path.realpath(LIB)):
+        raise HTTPException(400, "folder outside library")
+    if not os.path.isdir(root):
+        raise HTTPException(404, f"folder not found: {folder}")
+    files = []
+    for dirpath, _dirs, names in os.walk(root):
+        for n in sorted(names):
+            if os.path.splitext(n)[1].lower() in VIDEO_EXTS:
+                fp = os.path.join(dirpath, n)
+                try:
+                    st = os.stat(fp)
+                except OSError:
+                    continue
+                files.append(dict(rel_path=os.path.relpath(fp, LIB),
+                                  name=n, size_bytes=st.st_size,
+                                  modified=int(st.st_mtime)))
+    return {"folder": folder, "files": files}
+
+@app.post("/api/admin/folder_cleanup")
+def folder_cleanup(folder: str):
+    """Flatten a library folder: move (renamed) video files to its root,
+    delete non-video files and subdirectories, and update files.rel_path in the DB."""
+    VIDEO_EXTS = {".mov", ".mp4", ".mkv", ".avi", ".mxf", ".m4v", ".webm", ".mpg", ".mpeg", ".ts"}
+    root = os.path.realpath(os.path.join(LIB, folder))
+    libroot = os.path.realpath(LIB)
+    if not root.startswith(libroot) or root == libroot:
+        raise HTTPException(400, "folder must be inside the library")
+    if not os.path.isdir(root):
+        raise HTTPException(404, f"folder not found: {folder}")
+    moved, deleted = [], []
+    # 1. flatten videos from subdirs into folder root
+    for dirpath, dirs, names in os.walk(root, topdown=False):
+        for n in names:
+            fp = os.path.join(dirpath, n)
+            if os.path.splitext(n)[1].lower() in VIDEO_EXTS:
+                dest = os.path.join(root, n)
+                if fp != dest:
+                    if os.path.exists(dest):
+                        deleted.append(os.path.relpath(fp, LIB))  # duplicate name; drop source
+                        os.remove(fp)
+                        continue
+                    os.rename(fp, dest)
+                    moved.append((os.path.relpath(fp, LIB), os.path.relpath(dest, LIB)))
+            else:
+                os.remove(fp)
+                deleted.append(os.path.relpath(fp, LIB))
+    # 2. drop now-empty subdirectories
+    for dirpath, dirs, names in os.walk(root, topdown=False):
+        if dirpath != root and not os.listdir(dirpath):
+            os.rmdir(dirpath)
+    # 3. keep the DB in sync
+    with psycopg.connect(DB, autocommit=True) as conn:
+        for old, new in moved:
+            conn.execute("UPDATE files SET rel_path=%s WHERE rel_path=%s", (new, old))
+    return {"folder": folder, "moved": len(moved), "deleted": deleted}
 
 @app.get("/api/admin/queue")
 def queue():

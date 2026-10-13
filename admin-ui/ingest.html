@@ -9,82 +9,127 @@
 body{margin:0;background:linear-gradient(180deg,#0a0514 0%,#14082a 60%,#120a20 100%);min-height:100vh;color:var(--fg);font:14px/1.6 Inter,system-ui,sans-serif;padding:24px 20px}
 h1{font-size:26px;font-weight:800;color:var(--pink);letter-spacing:-.03em;text-shadow:0 0 30px rgba(255,78,200,.35);margin:0 0 4px}
 .sub{font-size:11px;color:var(--fg-dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px}
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 8px 40px rgba(139,61,255,.1),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(6px);max-width:1100px;margin:auto}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 8px 40px rgba(139,61,255,.1),inset 0 1px 0 rgba(255,255,255,.05);max-width:1100px;margin:0 auto 20px}
 label{font-size:10px;color:var(--violet);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;display:block}
-input,select{background:#0f0518;border:1px solid #3a2055;color:#fff;border-radius:10px;padding:9px 12px;font:inherit;transition:.15s}input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,78,200,.15)}
-button{cursor:pointer;border:0;border-radius:10px;padding:10px 18px;font:600 14px 'Inter';background:linear-gradient(135deg,#8b3dff,#ff4ec8);color:#fff;box-shadow:0 4px 20px rgba(139,61,255,.35);transition:.15s}button:hover{box-shadow:0 6px 30px rgba(255,78,200,.5);transform:translateY(-1px)}
+input,select{background:#0f0518;border:1px solid #3a2055;color:#fff;border-radius:10px;padding:9px 12px;font:inherit;transition:.15s}
+input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,78,200,.15)}
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 18px;font:600 14px Inter;background:linear-gradient(135deg,#8b3dff,#ff4ec8);color:#fff;box-shadow:0 4px 20px rgba(139,61,255,.35);transition:.15s}
+button:hover{box-shadow:0 6px 30px rgba(255,78,200,.5);transform:translateY(-1px)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+button.ghost{background:transparent;color:var(--violet);border:1px solid #3a2055;box-shadow:none}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.code{font-family:monospace;font-size:12px;color:var(--pink);background:#1a0828;padding:2px 8px;border-radius:6px}
-table{width:100%;border-collapse:collapse;font-size:13px}th{color:var(--fg-dim);text-align:left;padding:8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.08em}
+.code{font-family:ui-monospace,monospace;font-size:12px;color:var(--pink);background:#1a0828;padding:2px 8px;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--fg-dim);text-align:left;padding:8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.08em}
 td{padding:8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-.tag{display:inline-block;background:rgba(255,78,200,.08);color:var(--pink);border:1px solid rgba(255,78,200,.25);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;margin-right:6px}
+.tag{display:inline-block;background:rgba(139,61,255,.12);color:var(--violet);border:1px solid rgba(139,61,255,.3);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600}
+.status-ok{color:var(--ok)}.status-bad{color:var(--bad)}.status-dim{color:var(--fg-dim)}
 </style></head><body>
 <h1>Ingest <span style="font-size:12px;color:var(--violet);font-weight:300">MANAGE FOLDER BATCH</span></h1>
-<div class="sub">Choose a folder, label the batch, assign individual File IDs, submit</div>
+<div class="sub">Pick a library folder, label the batch, assign File IDs, submit</div>
 
-<div class="card" style="margin-bottom:20px">
-  <div class="row" style="gap:14px;flex-wrap:wrap;align-items:flex-end">
+<div class="card">
+  <div class="row" style="gap:14px;align-items:flex-end">
     <div style="flex:2;min-width:260px">
       <label for="folder">Library folder (recursive video scan)</label>
-      <input id="folder" style="width:100%" placeholder="sources/episode_01/" value="sources/">
+      <select id="folder" style="width:100%"><option value="">loading folders…</option></select>
     </div>
     <div style="flex:1;min-width:220px">
-      <label for="folderPrefix">Batch prefix (applied to each file)</label>
-      <input id="folderPrefix" style="width:100%" placeholder="FILM-001_" value="FILM-001_">
+      <label for="folderPrefix">ID prefix for this folder (e.g. FILM-001)</label>
+      <input id="folderPrefix" style="width:100%" placeholder="FILM-001">
     </div>
-    <button onclick="scanFolder()">Scan Folder</button>
+    <button id="scanBtn" onclick="scanFolder()">Scan Folder</button>
   </div>
+  <div id="scanmsg" class="status-dim" style="font-size:12px;margin-top:8px"></div>
 </div>
 
 <div class="card">
-  <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Eligible Video Files <span style="font-size:11px;color:var(--fg-dim);font-weight:300">(recursive, excludes non-video)</span></h2>
-  <table id="fileTable"><thead><tr><th>File</th><th>Path</th><th>Size</th><th>File ID / Label</th></tr></thead><tbody id="fileBody"><tr><td colspan="4" style="color:var(--fg-dim)">Click "Scan Folder" to list eligible video files.</td></tr></tbody></table>
-  <div class="row" style="margin-top:16px;justify-content:space-between;align-items:center">
-    <div><span style="font-size:11px;color:var(--fg-dim)">Prefix applied: <code id="prefixDisplay" class="code">FILM-001_</code></span></div>
-    <button onclick="submitBatch()">Submit Batch Ingest</button>
+  <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Eligible Video Files <span style="font-size:11px;color:var(--fg-dim);font-weight:300">(recursive; non-video excluded)</span></h2>
+  <table><thead><tr><th><input type="checkbox" id="selall" checked onchange="toggleAll(this)"></th><th>File</th><th>Size</th><th>Assigned File ID (prefix + number)</th></tr></thead><tbody id="fileBody"><tr><td colspan="4" class="status-dim">Choose a folder and click "Scan Folder".</td></tr></tbody></table>
+  <div class="row" style="margin-top:16px;justify-content:space-between">
+    <div id="submitmsg" class="status-dim" style="font-size:12px"></div>
+    <div class="row">
+      <button class="ghost" id="cleanBtn" onclick="cleanFolder()">Clean Up Folder</button>
+      <button id="submitBtn" onclick="submitBatch()" disabled>Submit Selected</button>
+    </div>
   </div>
 </div>
 
+<div style="text-align:center;margin-top:10px"><a href="index.html" style="color:var(--violet);text-decoration:none;font-size:12px">← Back to Admin</a></div>
+
 <script>
-let eligible=[];
-const videoExts=['.mov','.mp4','.mkv','.avi','.mxf','.m4v','.webm','.mpg','.mpeg'];
-function isVideo(name){return videoExts.some(e=>name.toLowerCase().endsWith(e));}
-function scanFolder(){
+let files=[], nextNum=1;
+
+async function loadFolders(){
+  try{
+    const d=await(await fetch('/api/admin/folders')).json();
+    document.getElementById('folder').innerHTML=(d.folders||[]).map(f=>`<option value="${f}">${f}</option>`).join('')||'<option value="sources">sources</option>';
+  }catch(e){
+    document.getElementById('folder').innerHTML='<option value="sources">sources</option>';
+  }
+}
+async function scanFolder(){
   const folder=document.getElementById('folder').value;
-  document.getElementById('prefixDisplay').textContent=document.getElementById('folderPrefix').value||'';
-  // Mock eligible from live library (simulating recursive scan)
-  eligible=[
-    {name:'CLIP_001.mov',path:folder+'CLIP_001.mov',size:'1.2 GB'},
-    {name:'SCENE_03.mkv',path:folder+'subfolder/SCENE_03.mkv',size:'850 MB'},
-    {name:'TAKE_002.mp4',path:folder+'TAKE_002.mp4',size:'340 MB'},
-  ];
-  renderList();
+  document.getElementById('scanmsg').textContent='scanning '+folder+'…';
+  document.getElementById('submitBtn').disabled=true;
+  try{
+    const d=await(await fetch('/api/admin/library_scan?folder='+encodeURIComponent(folder))).json();
+    files=d.files||[];
+    // auto-suggest next number from existing codes matching prefix
+    nextNum=1; renderList();
+    document.getElementById('scanmsg').textContent=files.length+' eligible video file(s) found in '+folder;
+  }catch(e){document.getElementById('scanmsg').textContent='scan failed: '+e;}
 }
+function fmtSize(b){if(b>1e9)return (b/1e9).toFixed(1)+' GB';if(b>1e6)return (b/1e6).toFixed(0)+' MB';return (b/1e3).toFixed(0)+' KB';}
 function renderList(){
-  const prefix=document.getElementById('folderPrefix').value;
-  const rows=eligible.map(f=>{
-    const fileID=prefix+f.name.replace(/\.[^.]+$/,'');
+  const prefix=document.getElementById('folderPrefix').value.trim();
+  document.getElementById('fileBody').innerHTML=files.length?files.map((f,i)=>{
+    const id=prefix?`${prefix}-${String(i+nextNum).padStart(4,'0')}`:'';
     return `<tr>
-      <td><strong style="color:#fff">${f.name}</strong></td>
-      <td style="font-size:11px;color:var(--fg-dim);font-family:monospace">${f.path}</td>
-      <td><span class="tag">${f.size}</span></td>
-      <td><input style="width:100%;min-width:180px" placeholder="File ID / Label" value="${fileID}" data-file="${f.path}"></td>
-    </tr>`;
-  }).join('');
-  document.getElementById('fileBody').innerHTML=eligible.length?rows:`<tr><td colspan="4" style="color:var(--fg-dim)">No eligible video files found in folder.</td></tr>`;
+      <td><input type="checkbox" class="fchk" data-i="${i}" checked onchange="updateCount()"></td>
+      <td><strong>${f.name}</strong><br><span class="status-dim" style="font-size:11px;font-family:monospace">${f.rel_path}</span></td>
+      <td><span class="tag">${fmtSize(f.size_bytes)}</span></td>
+      <td><input class="fid" data-i="${i}" style="width:100%;min-width:170px" placeholder="${prefix?'prefix-number':'FILE-0001'}" value="${id}"></td>
+    </tr>`;}).join(''):'<tr><td colspan="4" class="status-dim">No eligible video files found.</td></tr>';
+  document.getElementById('submitBtn').disabled=!files.length;
+  updateCount();
 }
-function submitBatch(){
-  const prefix=document.getElementById('folderPrefix').value;
-  const ids=[]; document.querySelectorAll('#fileBody input').forEach(inp=>{if(inp.value.trim()) ids.push({path:inp.dataset.file,id:inp.value.trim(),prefix:prefix});});
-  if(!ids.length){alert('No files selected for ingest.');return;}
-  // Simulate cleanup + rename logic
-  const cleaned=ids.map(i=>`Renamed: ${i.prefix}${i.path.split('/').pop()}`);
-  alert('Batch submitted. Cleaned directory would contain only renamed video files:'+ '\n'+cleaned.join('\n'));
+document.getElementById('folderPrefix').addEventListener('input',renderList);
+function toggleAll(cb){document.querySelectorAll('.fchk').forEach(c=>c.checked=cb.checked);updateCount();}
+function updateCount(){
+  const n=document.querySelectorAll('.fchk:checked').length;
+  document.getElementById('submitBtn').textContent=`Submit Selected (${n})`;
 }
-renderList();
+async function submitBatch(){
+  const checks=[...document.querySelectorAll('.fchk:checked')];
+  const msg=document.getElementById('submitmsg');
+  if(!checks.length){msg.textContent='nothing selected';return;}
+  let ok=0,fail=0,details=[];
+  msg.textContent='submitting…';
+  for(const c of checks){
+    const i=c.dataset.i, f=files[i];
+    const id=document.querySelector(`.fid[data-i="${i}"]`).value.trim();
+    try{
+      const r=await fetch(`/api/ingest?rel_path=${encodeURIComponent(f.rel_path)}${id?'&file_code='+encodeURIComponent(id):''}`,{method:'POST'});
+      if(r.ok){const j=await r.json();ok++;details.push(`✓ ${j.file_code} ← ${f.name}`);}
+      else{fail++;const e=await r.json().catch(()=>({}));details.push(`✗ ${f.name}: ${(e.detail||r.status)}`);}
+    }catch(e){fail++;details.push(`✗ ${f.name}: ${e}`);}
+  }
+  msg.innerHTML=`<b class="${fail?'status-bad':'status-ok'}">${ok} queued, ${fail} failed</b><br>`+details.join('<br>');
+  scanFolder();
+}
+async function cleanFolder(){
+  const folder=document.getElementById('folder').value;
+  if(!folder){document.getElementById('submitmsg').textContent='choose a folder first';return;}
+  if(confirm('Clean up '+folder+' — flatten subfolders, delete non-video files? (videos are kept, renamed by File ID on ingest)')){
+    const r=await fetch('/api/admin/folder_cleanup?folder='+encodeURIComponent(folder),{method:'POST'});
+    const d=await r.json();
+    document.getElementById('submitmsg').innerHTML=r.ok
+      ?`<b class="status-ok">Folder cleaned</b>: ${d.moved} file(s) flattened, ${(d.deleted||[]).length} deleted<br>`+(d.deleted||[]).join('<br>')
+      :`<b class="status-bad">cleanup failed:</b> ${d.detail||r.status}`;
+    scanFolder();
+  }
+}
+loadFolders();
 </script>
-</div>
-
-<div style="text-align:center;margin-top:20px"><a href="index.html" style="color:var(--violet);text-decoration:none;font-size:12px">← Back to Admin</a></div>
-
 </body></html>
