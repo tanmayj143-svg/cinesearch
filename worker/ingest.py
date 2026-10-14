@@ -97,18 +97,35 @@ def report_gpu(conn):
     """Best-effort GPU telemetry for the queue page (worker has the GPU)."""
     try:
         out = subprocess.run(["nvidia-smi",
-                              "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,power.draw",
+                              "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,power.draw,power.limit",
                               "--format=csv,noheader,nounits"],
                              capture_output=True, text=True, timeout=8).stdout.strip()
         if not out:
             return
-        name, tot, used, free, util, temp, power = [x.strip() for x in out.splitlines()[0].split(",")]
+        name, tot, used, free, util, temp, power, plimit = [x.strip() for x in out.splitlines()[0].split(",")]
         conn.execute("""UPDATE worker_state SET gpu_json=%s, updated_at=now() WHERE id=1""",
                      (json.dumps({"available": True, "name": name,
                                   "total_mb": int(tot), "used_mb": int(used),
                                   "free_mb": int(free), "util_pct": int(util),
                                   "temp_c": int(temp),
-                                  "power_w": float(power) if power not in ("[N/A]", "") else None}),))
+                                  "power_w": float(power) if power not in ("[N/A]", "") else None,
+                                  "power_limit_w": float(plimit) if plimit not in ("[N/A]", "") else None}),))
+    except Exception:
+        pass
+
+_APPLIED_PL = None
+def apply_power_limit(watts):
+    """Set GPU power cap via nvidia-smi (worker container has SYS_ADMIN).
+    None/0 -> restore factory default (170W on RTX 3060). Best-effort."""
+    global _APPLIED_PL
+    want = int(watts) if watts else 170
+    if _APPLIED_PL == want:
+        return
+    try:
+        r = subprocess.run(["nvidia-smi", "-pl", str(want)],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            _APPLIED_PL = want
     except Exception:
         pass
 
@@ -235,7 +252,7 @@ def st_shotvl(conn, f):
                  tags.get("camera_movement"), tags.get("lens_type"),
                  tags.get("lighting"), tags.get("composition"), sid))
         except (json.JSONDecodeError, ValueError):
-            log(conn, f["queue_id"], "shotvl", "failed", f"parse shot {sid}")
+            log(conn, f["queue_id"], "shotvl", "warning", f"parse shot {sid}")
         shutil.rmtree(tmpdir, ignore_errors=True)
     release_if_needed("shotvl")
     # Stage-done honesty: if every shot failed to parse, fail the stage so a
@@ -290,7 +307,7 @@ def st_vlm(conn, f):
                           tags.get("color_scheme"), json.dumps(tags.get("objects",[])),
                           tags.get("narrative_role"), sid))
         except (json.JSONDecodeError, ValueError):
-            log(conn, f["queue_id"], "vlm", "failed", f"parse shot {sid}")
+            log(conn, f["queue_id"], "vlm", "warning", f"parse shot {sid}")
     release_if_needed("vlm")
     # Same honesty rule as shotvl: zero descriptions written = stage failure.
     described = conn.execute("SELECT count(*) FROM shots WHERE file_id=%s AND description IS NOT NULL",
@@ -476,6 +493,7 @@ def run():
         while True:
             old_tier = CFG.get("tier")
             CFG.update(load())   # pick up tier/residency changes from admin UI
+            apply_power_limit(CFG.get("power_limit_w"))
             if old_tier and old_tier != CFG.get("tier"):
                 GPU_CACHE.clear()    # resident models belong to the previous tier
                 try:
@@ -511,6 +529,11 @@ def run():
                              (f["queue_id"],))
                 conn.execute("UPDATE files SET status='done' WHERE file_id=%s",
                              (f["file_id"],))
+                # Cooldown between jobs (configurable, 0 = disabled)
+                cool = int(CFG.get("inter_job_sleep_s") or 0)
+                if cool:
+                    set_model(conn, f"cooldown {cool}s")
+                    time.sleep(cool)
             except Exception as e:
                 log(conn, f["queue_id"], stage, "failed", error=e)
                 conn.execute("UPDATE ingest_queue SET status='failed' WHERE queue_id=%s",

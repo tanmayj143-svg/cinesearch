@@ -102,13 +102,19 @@ DEFAULTS = {
         "postgresql://cinesearch:***@db:5432/cinesearch"),
     "proxy_height": 360,
     "shotvl_num_frames": 12,
+    "power_limit_w": None,      # None = leave GPU at factory default; int = cap watts
+    "inter_job_sleep_s": 0,     # cooldown pause the worker takes after each finished job
 }
 
 def load():
     cfg = dict(DEFAULTS)
     if os.path.exists(CONFIG_PATH):
         cfg.update(json.load(open(CONFIG_PATH)))
-    cfg["models"] = TIERS[cfg["tier"]]
+    # tier picks defaults; per-model overrides in config.json ("models") win
+    base = dict(TIERS[cfg["tier"]])
+    ov = cfg.get("models") or {}
+    base.update({k: v for k, v in ov.items() if k in base})
+    cfg["models"] = base
     p = RESIDENCY_PROFILES.get(cfg.get("residency", "sequential"),
                                RESIDENCY_PROFILES["sequential"])
     cfg["residency_models"] = p["models"]

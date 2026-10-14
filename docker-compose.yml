@@ -47,6 +47,29 @@ services:
       - ${HF_CACHE}:/hf_cache
       - ./config.json:/app/config.json
       - ./worker:/app
+    cap_add:
+      - SYS_ADMIN            # allows nvidia-smi -pl power capping from the worker
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  telemetry:
+    image: cinesearch-worker     # reuse the worker image (same deps + GPU access)
+    command: ["python", "telemetry_updater.py"]
+    cap_add:
+      - SYS_ADMIN                # nvidia-smi -pl power capping in real time
+    environment:
+      DATABASE_URL: postgresql://cinesearch:cinesearch@db:5432/cinesearch
+    volumes:
+      - ./worker:/app
+      - ./config.json:/app/config.json:ro
     deploy:
       resources:
         reservations:

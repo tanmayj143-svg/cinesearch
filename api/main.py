@@ -342,7 +342,8 @@ def get_config():
 def set_config(cfg: dict):
     # Whitelist: only worker-tuning keys may be written from the UI — the raw
     # dict merge previously let a caller overwrite library_root/database_url etc.
-    allowed = {"tier", "residency", "proxy_height", "shotvl_num_frames"}
+    allowed = {"tier", "residency", "proxy_height", "shotvl_num_frames",
+               "power_limit_w", "inter_job_sleep_s", "models"}
     cfg = {k: v for k, v in cfg.items() if k in allowed}
     if not cfg:
         raise HTTPException(400, f"no writable keys provided (allowed: {sorted(allowed)})")

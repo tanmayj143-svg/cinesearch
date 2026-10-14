@@ -1,5 +1,26 @@
 # CineSearch — UPDATE LOG
 
+## v12 — Power cap, job stagger, condensed status panel, IST time (2026-10-14)
+- **GPU power cap from the WebUI:** Ingest page slider (100–170 W, factory default 170) writes `power_limit_w` to the shared config; the telemetry sidecar (SYS_ADMIN) applies `nvidia-smi -pl` within ~1 s even mid-stage. Worker also applies it between jobs.
+- **Measured data points (RTX 3060, VLM stage, live benchmarks):**
+  | Cap | Temp | Fan | VLM shots/min | ≈ per 2 h film |
+  |---|---|---|---|---|
+  | 170 W | 78 °C | 77 % | 13.0 | ~4.7 h |
+  | 150 W | 75 °C | 72 % | 11.5 | ~5.2 h |
+  | 120 W | 67 °C | 70 % | 12.8 | ~4.8 h |
+  | 100 W | 61 °C | 58 % | 9.5 (est.) | ~6.4 h |
+  VLM inference is memory-bound → 120 W costs ~2 % throughput for 11 °C less heat. Batch ETA line on the ingest page multiplies pending films × per-film cost + cooldowns.
+- **Job stagger:** `inter_job_sleep_s` (0–1 h) — worker pauses N seconds after each finished film (shows `cooldown Ns` in the worker pill).
+- **Telemetry sidecar as its own service** (`cinesearch-telemetry`): 1 s loop, computes per-step progress, **step ETA** and **whole-job ETA** from measured shot rates (shotvl 3.3 s/shot, vlm 3.8 s/shot, ~17 m fixed tail), and never overwrites the worker's own `current_model` outside shotvl/vlm.
+- **Admin UI redesign:**
+  - Condensed the four status tiles + separate failed tile into ONE panel: active film (`FILM-0001 · processing · step 5/10 · vlm · 1207/2554`) above counts (pending / processed / failed / shots / utterances / scenes). Positioned above GPU telemetry.
+  - Job queue ETA is now **whole-job**; details inspector adds step progress + step ETA + job ETA side by side.
+  - Pipeline journey cards each show a Step ETA row while running.
+  - Layout jitter eliminated: fixed colgroup widths, tabular numerals, ellipsis, min-heights on cards and status panel; "Stage Progress" no longer repeats ETA text.
+  - Shot-level `parse shot N` records are `warning` (amber), never `failed` — DB history rewritten and worker logging fixed.
+- **Time:** Postgres DB default timezone set to `Asia/Kolkata`; all timestamps now render IST (+05:30).
+- **Config whitelist** extended: `power_limit_w`, `inter_job_sleep_s`, `models` (per-model overrides now honored by `worker/config.load()`).
+
 ## v9 — Ingest UI rework, live telemetry, and pipeline stability (2026-10-14)
 - **Ingest UI Rework:**
   - Category is now a free text box (batch header + per-row text box) with auto-registration into taxonomy table.

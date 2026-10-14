@@ -12,72 +12,74 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 Inter,system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 header{height:48px;min-height:48px;display:flex;align-items:center;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface);z-index:20}
-.wordmark{font-size:13px;font-weight:700;letter-spacing:.18em}
+.wordmark{font-size:13px;font-weight:700;letter-spacing:.18em;white-space:nowrap}
 nav{display:flex;gap:4px}
-nav a{color:var(--fgdim);text-decoration:none;font-size:13px;padding:4px 10px;border-bottom:2px solid transparent}
+nav a{color:var(--fgdim);text-decoration:none;font-size:13px;padding:4px 10px;border-bottom:2px solid transparent;white-space:nowrap}
 nav a.on{color:var(--fg);border-bottom-color:var(--accent2)}
-#worker-pill{margin-left:auto;font-size:12px;color:var(--fgdim);display:flex;align-items:center;gap:7px}
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--ok)}
+#worker-pill{margin-left:auto;font-size:12px;color:var(--fgdim);display:flex;align-items:center;gap:7px;max-width:360px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#worker-pill #wtext{overflow:hidden;text-overflow:ellipsis}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--ok);flex:none}
 .dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.idle{background:var(--fgdim)}
 
-/* 3-Column Workstation Layout */
 #app-layout{flex:1;display:flex;height:calc(100vh - 48px);overflow-x:auto;overflow-y:hidden}
 
-/* Left Panel: Pipeline Journey & Steps */
+/* LEFT: Pipeline Journey */
 #panel-left{width:360px;min-width:340px;height:100%;overflow-y:auto;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column}
 .panel-header{padding:16px 18px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:10}
 .panel-header h2{font-size:13px;font-weight:600;margin:0;letter-spacing:.02em}
 .pipeline-journey{padding:18px 16px;position:relative}
 .journey-track{position:absolute;left:29px;top:28px;bottom:28px;width:2px;background:var(--line);z-index:1}
-
 .step-card{position:relative;z-index:2;display:flex;gap:14px;margin-bottom:16px;padding:12px 14px;background:var(--surface2);border:1px solid var(--line);border-radius:6px;transition:border-color .15s,box-shadow .15s}
 .step-card.active{border-color:var(--accent2);box-shadow:0 0 16px rgba(255,78,200,.18);background:linear-gradient(135deg,rgba(139,61,255,.08),rgba(255,78,200,.05))}
 .step-card.done{border-color:rgba(78,207,138,.35)}
-
 .node{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:2px solid var(--line);color:var(--fgdim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .2s}
 .step-card.active .node{border-color:var(--accent2);color:#fff;background:var(--accent2);box-shadow:0 0 10px var(--accent2);animation:nodePulse 1.4s infinite}
 .step-card.done .node{border-color:var(--ok);background:var(--ok);color:#0b0714}
 @keyframes nodePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-
 .step-info{flex:1;min-width:0}
-.step-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.step-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:8px}
 .step-name{font-weight:600;font-size:12.5px;color:var(--fg)}
 .step-card.active .step-name{color:var(--accent2)}
-.step-tag{font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--fgdim)}
+.step-tag{font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--fgdim);white-space:nowrap}
 .step-card.done .step-tag{background:rgba(78,207,138,.12);color:var(--ok)}
 .step-card.active .step-tag{background:rgba(255,78,200,.2);color:var(--accent2);font-weight:600}
-
 .step-desc{font-size:11px;color:var(--fgdim);line-height:1.45;margin-bottom:6px}
 .step-model-box{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
 .step-model-box select{width:100%;font-size:11px;padding:4px 6px;height:26px;background:var(--surface);border-color:var(--line);border-radius:4px}
 .step-progress-box{margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--accent);border-radius:4px;font-size:11px}
 .step-progress-box .bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:5px}
 .step-progress-box .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+.step-eta{display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);font-size:10.5px;color:var(--fgdim)}
+.step-eta b{color:var(--accent2);font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-/* Center Panel: Status, GPU, and Jobs Queue */
+/* CENTER */
 #panel-center{flex:1;min-width:580px;height:100%;overflow-y:auto;padding:20px;background:var(--bg)}
-.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
-.tile .n{font-size:20px;font-weight:700;letter-spacing:-.02em}
-.tile .l{font-size:10.5px;color:var(--fgdim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
-.tile .sub{font-size:10.5px;color:var(--fgdim);margin-top:4px}
-.tile.bad .n{color:var(--bad);cursor:pointer}
+
+/* Condensed single status panel */
+#statuspanel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:16px;min-height:96px}
+#status-active{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14px;min-height:24px}
+#status-active .film{font-family:var(--mono);font-weight:700;color:var(--accent2);font-size:15px}
+#status-active .stage{font-size:12px;color:var(--fgdim)}
+#status-counts{display:flex;gap:26px;font-size:12px;color:var(--fgdim);white-space:nowrap}
+#status-counts b{font-size:16px;font-variant-numeric:tabular-nums;font-weight:700;display:block;color:var(--fg)}
+#status-counts .c-fail b{color:var(--bad)}
+#status-counts .c-done b{color:var(--ok)}
 
 section.box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:16px}
-section.box h2{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--fg);display:flex;align-items:center;justify-content:space-between}
+section.box h2{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--fg);display:flex;align-items:center;justify-content:space-between;gap:10px}
 
-/* GPU Grid */
-#gpugrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;font-size:12px}
-#gpugrid > div{background:var(--surface2);padding:8px 12px;border-radius:5px;border:1px solid var(--line);min-width:0}
+/* GPU Grid — fixed layout, no wrap, ellipsis */
+#gpugrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;font-size:12px}
+#gpugrid > div{background:var(--surface2);padding:8px 12px;border-radius:5px;border:1px solid var(--line);min-width:0;min-height:58px}
 #gpugrid .dim{font-size:10.5px;color:var(--fgdim);text-transform:uppercase;letter-spacing:.05em}
-#gpugrid .val{font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gpugrid .val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Jobs Table - Rock-Solid Fixed Layout */
+/* Jobs table — fixed columns, tabular numbers */
 .table-wrap{width:100%;overflow-x:auto}
 table.fixed-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
 table.fixed-table th{color:var(--fgdim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.06em;white-space:nowrap}
-table.fixed-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
-.mono{font-family:var(--mono);font-size:12px}
+table.fixed-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px}
 .dim{color:var(--fgdim);font-size:11px}
 .segs{display:inline-flex;gap:2px;vertical-align:middle}
 .seg{width:13px;height:7px;border-radius:2px;background:var(--surface2);border:1px solid var(--line)}
@@ -85,21 +87,20 @@ table.fixed-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.0
 .seg.failed{background:var(--bad);border-color:var(--bad)}
 .seg.active{background:var(--accent2);border-color:var(--accent2);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
-
 tr.jobrow{cursor:pointer}
 tr.jobrow:hover td{background:var(--surface2)}
-tr.evrow td{background:var(--surface2);padding:14px;overflow:visible !important;white-space:normal !important}
+tr.evrow td{background:var(--surface2);padding:14px;overflow:visible;white-space:normal}
 
-/* Right Panel: Full Height Library */
+/* RIGHT: Library */
 #panel-right{width:360px;min-width:330px;height:100%;overflow-y:auto;border-left:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column}
 .lib-list{padding:14px;display:flex;flex-direction:column;gap:10px}
 .lib-card{background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:12px 14px;transition:border-color .15s}
 .lib-card:hover{border-color:var(--accent)}
-.lib-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.lib-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .lib-code{font-weight:700;font-family:var(--mono);color:var(--accent2);font-size:12.5px}
 .lib-cat{font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid var(--accent);color:var(--accent)}
 .lib-path{font-family:var(--mono);font-size:11px;color:var(--fgdim);margin-bottom:8px;word-break:break-all}
-.lib-meta{display:flex;gap:10px;font-size:11px;color:var(--fgdim);margin-bottom:10px}
+.lib-meta{display:flex;gap:10px;font-size:11px;color:var(--fgdim);margin-bottom:10px;font-variant-numeric:tabular-nums}
 .lib-actions{display:flex;gap:6px;align-items:center}
 
 button{cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:6px 12px;font:600 12px Inter;background:var(--surface2);color:var(--fg);transition:border-color .12s}
@@ -109,6 +110,8 @@ button.tiny{padding:3px 8px;font-size:11px}
 button.armed{border-color:var(--bad);color:var(--bad)}
 input,select{background:var(--surface2);border:1px solid var(--line);color:var(--fg);border-radius:4px;padding:6px 8px;font:inherit}
 input:focus,select:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty{color:var(--fgdim);padding:24px;text-align:center}
 #toast{position:fixed;top:58px;right:18px;z-index:99;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px;padding:10px 14px;font-size:12px;max-width:340px}
 .toast.bad{border-left-color:var(--bad)}
@@ -118,7 +121,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <span class="wordmark">CINESEARCH</span>
   <nav>
     <a href="/">Search</a>
-    <a href="/admin/" class="on">Queue & Pipeline</a>
+    <a href="/admin/" class="on">Queue &amp; Pipeline</a>
     <a href="/admin/ingest.html">Ingest</a>
   </nav>
   <span id="worker-pill"><span class="dot idle"></span><span id="wtext">…</span></span>
@@ -126,177 +129,181 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 
 <div id="app-layout">
 
-  <!-- LEFT: Full Height Pipeline Journey & Model Choosers -->
+  <!-- LEFT: Full Height Pipeline Journey -->
   <aside id="panel-left">
     <div class="panel-header">
       <h2>Pipeline Journey</h2>
       <span class="dim" style="font-size:11px">10 Automated Stages</span>
     </div>
-
     <div class="pipeline-journey">
       <div class="journey-track"></div>
 
-      <!-- Step 1: Probe -->
       <div class="step-card" id="sc-probe">
         <div class="node">1</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Probe</span><span class="step-tag" id="stg-probe">wait</span></div>
-          <div class="step-desc">Fast ffprobe metadata extraction, video stream FPS/dimensions, and content SHA-256 hash.</div>
+          <div class="step-top"><span class="step-name">Probe</span><span class="step-tag" id="stg-probe">queued</span></div>
+          <div class="step-desc">ffprobe metadata, FPS/dimensions, and content SHA-256 hash.</div>
+          <div class="step-eta" id="eta-probe" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 2: SceneDetect -->
       <div class="step-card" id="sc-scenedetect">
         <div class="node">2</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">SceneDetect</span><span class="step-tag" id="stg-scenedetect">wait</span></div>
-          <div class="step-desc">PySceneDetect visual cut boundary analysis and individual shot keyframe thumbnail extraction.</div>
-          <div class="step-progress-box" id="prog-scenedetect" style="display:none">
-            <span id="txt-scenedetect">Analyzing visual cuts…</span>
-          </div>
+          <div class="step-top"><span class="step-name">SceneDetect</span><span class="step-tag" id="stg-scenedetect">queued</span></div>
+          <div class="step-desc">PySceneDetect cut boundaries + keyframe thumbnails per shot.</div>
+          <div class="step-progress-box" id="prog-scenedetect" style="display:none"><span id="txt-scenedetect">Detecting cuts…</span></div>
+          <div class="step-eta" id="eta-scenedetect" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 3: Whisper -->
       <div class="step-card" id="sc-whisper">
         <div class="node">3</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Speech to Text</span><span class="step-tag" id="stg-whisper">wait</span></div>
-          <div class="step-desc">High-precision speech transcription with word-level timestamps via Faster-Whisper.</div>
+          <div class="step-top"><span class="step-name">Speech to Text</span><span class="step-tag" id="stg-whisper">queued</span></div>
+          <div class="step-desc">Word-level timestamped transcription via Faster-Whisper.</div>
           <div class="step-model-box">
             <div class="dim" style="margin-bottom:3px">Model Chooser</div>
             <select id="m-whisper" onchange="updateModel('whisper',this.value)">
-              <option value="large-v3">faster-whisper large-v3 (Default)</option>
+              <option value="large-v3">faster-whisper large-v3</option>
               <option value="medium">faster-whisper medium</option>
               <option value="small">faster-whisper small</option>
             </select>
           </div>
-          <div class="step-progress-box" id="prog-whisper" style="display:none">
-            <span id="txt-whisper">Transcribing dialogue…</span>
-          </div>
+          <div class="step-progress-box" id="prog-whisper" style="display:none"><span id="txt-whisper">Transcribing…</span></div>
+          <div class="step-eta" id="eta-whisper" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 4: ShotVL -->
       <div class="step-card" id="sc-shotvl">
         <div class="node">4</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">ShotVL Classifier</span><span class="step-tag" id="stg-shotvl">wait</span></div>
-          <div class="step-desc">Temporal vision-language model analyzing multi-frame camera movement, shot size, composition & lighting.</div>
+          <div class="step-top"><span class="step-name">ShotVL Classifier</span><span class="step-tag" id="stg-shotvl">queued</span></div>
+          <div class="step-desc">Camera movement, shot size, composition &amp; lighting from frame strips.</div>
           <div class="step-progress-box" id="prog-shotvl" style="display:none">
-            <div id="txt-shotvl" style="font-weight:600">Processing shots…</div>
+            <div id="txt-shotvl" style="font-weight:600">Processing…</div>
             <div class="bar"><div class="bar-fill" id="bar-shotvl" style="width:0%"></div></div>
           </div>
+          <div class="step-eta" id="eta-shotvl" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 5: VLM -->
       <div class="step-card" id="sc-vlm">
         <div class="node">5</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Vision-Language Model</span><span class="step-tag" id="stg-vlm">wait</span></div>
-          <div class="step-desc">Qwen2.5-VL generating cinematic shot descriptions, mood tagging, color schemes, and narrative roles.</div>
+          <div class="step-top"><span class="step-name">Vision-Language Model</span><span class="step-tag" id="stg-vlm">queued</span></div>
+          <div class="step-desc">Shot descriptions, mood, color schemes, narrative roles (keyframes).</div>
           <div class="step-model-box">
             <div class="dim" style="margin-bottom:3px">Model Chooser</div>
             <select id="m-vlm" onchange="updateModel('vlm',this.value)">
-              <option value="unsloth/Qwen2.5-VL-7B-Instruct-bnb-4bit">Qwen2.5-VL-7B (4-bit, High Quality)</option>
-              <option value="Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5-VL-3B (Balanced)</option>
+              <option value="unsloth/Qwen2.5-VL-7B-Instruct-bnb-4bit">Qwen2.5-VL-7B (4-bit, quality)</option>
+              <option value="Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5-VL-3B (faster)</option>
             </select>
           </div>
           <div class="step-progress-box" id="prog-vlm" style="display:none">
-            <div id="txt-vlm" style="font-weight:600">Describing shots…</div>
+            <div id="txt-vlm" style="font-weight:600">Describing…</div>
             <div class="bar"><div class="bar-fill" id="bar-vlm" style="width:0%"></div></div>
           </div>
+          <div class="step-eta" id="eta-vlm" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 6: CLAP -->
       <div class="step-card" id="sc-clap">
         <div class="node">6</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Acoustic Embeddings</span><span class="step-tag" id="stg-clap">wait</span></div>
-          <div class="step-desc">LAION CLAP acoustic neural embeddings for sound effects, foley, and music retrieval.</div>
+          <div class="step-top"><span class="step-name">Acoustic Embeddings</span><span class="step-tag" id="stg-clap">queued</span></div>
+          <div class="step-desc">LAION CLAP audio vectors for sound/music retrieval.</div>
+          <div class="step-eta" id="eta-clap" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 7: Embed -->
       <div class="step-card" id="sc-embed">
         <div class="node">7</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Text Semantic Embed</span><span class="step-tag" id="stg-embed">wait</span></div>
-          <div class="step-desc">BAAI BGE-M3 dense multilingual vector embeddings over shot descriptions and dialogue.</div>
+          <div class="step-top"><span class="step-name">Text Semantic Embed</span><span class="step-tag" id="stg-embed">queued</span></div>
+          <div class="step-desc">BGE-M3 dense vectors over descriptions and dialogue (CPU).</div>
+          <div class="step-eta" id="eta-embed" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 8: Narrative -->
       <div class="step-card" id="sc-narrative">
         <div class="node">8</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Narrative LLM</span><span class="step-tag" id="stg-narrative">wait</span></div>
-          <div class="step-desc">Qwen2.5-7B causal LLM segmenting the global timeline into dramatic scenes and summary beats.</div>
+          <div class="step-top"><span class="step-name">Narrative LLM</span><span class="step-tag" id="stg-narrative">queued</span></div>
+          <div class="step-desc">Timeline segmented into dramatic scenes and summaries.</div>
           <div class="step-model-box">
             <div class="dim" style="margin-bottom:3px">Model Chooser</div>
             <select id="m-narrative" onchange="updateModel('narrative',this.value)">
-              <option value="unsloth/Qwen2.5-7B-Instruct-bnb-4bit">Qwen2.5-7B (4-bit, Canonical)</option>
-              <option value="Qwen/Qwen2.5-3B-Instruct">Qwen2.5-3B (Fast)</option>
+              <option value="unsloth/Qwen2.5-7B-Instruct-bnb-4bit">Qwen2.5-7B (4-bit)</option>
+              <option value="Qwen/Qwen2.5-3B-Instruct">Qwen2.5-3B (faster)</option>
             </select>
           </div>
+          <div class="step-eta" id="eta-narrative" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 9: Proxy -->
       <div class="step-card" id="sc-proxy">
         <div class="node">9</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">HLS Proxy &amp; Waveform</span><span class="step-tag" id="stg-proxy">wait</span></div>
-          <div class="step-desc">Hardware NVENC H.264 360p web streaming transcode and full-duration visual PNG waveform.</div>
+          <div class="step-top"><span class="step-name">HLS Proxy &amp; Waveform</span><span class="step-tag" id="stg-proxy">queued</span></div>
+          <div class="step-desc">NVENC 360p HLS stream + audio waveform PNG.</div>
+          <div class="step-eta" id="eta-proxy" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
-      <!-- Step 10: Joins -->
       <div class="step-card" id="sc-joins">
         <div class="node">10</div>
         <div class="step-info">
-          <div class="step-top"><span class="step-name">Relational Joins</span><span class="step-tag" id="stg-joins">wait</span></div>
-          <div class="step-desc">PostgreSQL timecode cross-indexing binding shots, utterances, and scenes into the unified index.</div>
+          <div class="step-top"><span class="step-name">Relational Joins</span><span class="step-tag" id="stg-joins">queued</span></div>
+          <div class="step-desc">Timecode cross-index binding shots, utterances, scenes.</div>
+          <div class="step-eta" id="eta-joins" style="display:none"><span>Step ETA</span><b>—</b></div>
         </div>
       </div>
 
     </div>
   </aside>
 
-  <!-- CENTER: Telemetry & Jobs Queue -->
+  <!-- CENTER -->
   <main id="panel-center">
-    <!-- Status Tiles -->
-    <div class="strip">
-      <div class="tile"><div class="n" id="s-files">—</div><div class="l">Files</div><div class="sub" id="s-vol"></div></div>
-      <div class="tile"><div class="n" id="s-shots">—</div><div class="l">Shots</div><div class="sub" id="s-utts"></div></div>
-      <div class="tile"><div class="n" id="s-queue">—</div><div class="l">Queue Active</div><div class="sub" id="s-gpu"></div></div>
-      <div class="tile bad" id="tile-failed" onclick="filterJobs('failed')"><div class="n" id="s-failed">0</div><div class="l">Failed</div><div class="sub">click to filter</div></div>
-    </div>
 
-    <!-- GPU Telemetry Panel -->
+    <!-- Condensed single status panel -->
+    <section id="statuspanel">
+      <div id="status-active">
+        <span class="dot idle" id="status-dot"></span>
+        <span>Idle</span>
+      </div>
+      <div id="status-counts">
+        <span class="c-pend"><b id="cnt-pending">0</b>pending</span>
+        <span class="c-done"><b id="cnt-done">0</b>processed</span>
+        <span class="c-fail"><b id="cnt-failed">0</b>failed</span>
+        <span><b id="cnt-shots">0</b>shots indexed</span>
+        <span><b id="cnt-utts">0</b>utterances</span>
+        <span><b id="cnt-scenes">0</b>scenes</span>
+      </div>
+    </section>
+
+    <!-- GPU Telemetry -->
     <section class="box" id="gpupanel">
-      <h2><span>GPU Telemetry <span class="dim" id="gpuname">—</span></span> <span class="dim" style="font-size:10.5px">Polled every 1s</span></h2>
+      <h2><span>GPU Telemetry <span class="dim" id="gpuname">—</span></span> <span class="dim" style="font-size:10.5px">1s poll</span></h2>
       <div id="gpugrid">
         <div>
-          <div class="dim">VRAM Usage</div>
+          <div class="dim">VRAM</div>
           <div class="val" id="g-vram">—</div>
           <div style="height:3px;background:var(--surface);border-radius:2px;margin-top:5px;overflow:hidden">
             <div id="g-vrambar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s"></div>
           </div>
         </div>
-        <div><div class="dim">Core Utilization</div><div class="val" id="g-util" style="color:var(--ok)">—</div></div>
-        <div><div class="dim">Power Draw</div><div class="val" id="g-power">—</div></div>
-        <div><div class="dim">Temperature</div><div class="val" id="g-temp">—</div></div>
-        <div><div class="dim">Active Model</div><div class="val" id="g-model" style="color:var(--accent2)">—</div></div>
+        <div><div class="dim">Utilization</div><div class="val" id="g-util" style="color:var(--ok)">—</div></div>
+        <div><div class="dim">Power</div><div class="val" id="g-power">—</div></div>
+        <div><div class="dim">Temp</div><div class="val" id="g-temp">—</div></div>
+        <div><div class="dim">Active model</div><div class="val" id="g-model" style="color:var(--accent2)">—</div></div>
       </div>
     </section>
 
-    <!-- Jobs Queue Panel -->
+    <!-- Jobs Queue -->
     <section class="box">
       <h2>
-        <span>Jobs Queue <span class="dim">live 1s</span></span>
+        <span>Jobs Queue <span class="dim">whole-job ETA · 1s</span></span>
         <div class="row" style="margin:0">
           <button class="tiny" onclick="pause(true)">Pause</button>
           <button class="tiny" onclick="pause(false)">Resume</button>
@@ -305,49 +312,36 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
           </select>
         </div>
       </h2>
-
       <div class="table-wrap">
         <table class="fixed-table">
           <colgroup>
             <col style="width:40px">
+            <col style="width:110px">
+            <col style="width:170px">
             <col style="width:105px">
-            <col style="width:160px">
-            <col style="width:115px">
             <col style="width:45px">
             <col style="width:150px">
-            <col style="width:85px">
+            <col style="width:90px">
           </colgroup>
           <thead>
-            <tr>
-              <th>#</th>
-              <th>Code</th>
-              <th>Status</th>
-              <th>ETA</th>
-              <th>Prio</th>
-              <th>Stages (1→10)</th>
-              <th>Action</th>
-            </tr>
+            <tr><th>#</th><th>Code</th><th>Status</th><th>Job ETA</th><th>Prio</th><th>Stages (1→10)</th><th>Action</th></tr>
           </thead>
-          <tbody id="qbody">
-            <tr><td colspan="7" class="empty">Loading queue…</td></tr>
-          </tbody>
+          <tbody id="qbody"><tr><td colspan="7" class="empty">Loading queue…</td></tr></tbody>
         </table>
       </div>
     </section>
   </main>
 
-  <!-- RIGHT: Full Height Library Panel -->
+  <!-- RIGHT: Library -->
   <aside id="panel-right">
     <div class="panel-header">
       <h2>Media Library</h2>
-      <button class="tiny" onclick="pollLibrary()">↻ Refresh</button>
+      <button class="tiny" onclick="pollLibrary()">↻</button>
     </div>
     <div style="padding:12px 14px;border-bottom:1px solid var(--line);background:var(--surface)">
-      <input id="libfilter" placeholder="Filter library codes/paths…" style="width:100%;font-size:11.5px" oninput="renderLibrary()">
+      <input id="libfilter" placeholder="Filter codes / paths…" style="width:100%;font-size:11.5px" oninput="renderLibrary()">
     </div>
-    <div class="lib-list" id="liblist">
-      <div class="empty">Loading library…</div>
-    </div>
+    <div class="lib-list" id="liblist"><div class="empty">Loading library…</div></div>
   </aside>
 
 </div>
@@ -356,15 +350,40 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 
 <script>
 const STAGES=["probe","scenedetect","whisper","shotvl","vlm","clap","embed","narrative","proxy","joins"];
-let jobs=[],expanded=new Set(),lastGpu={},currentWorkerModel='',libfiles=[];
+let jobs=[],expanded=new Set(),lastGpu={},currentWorkerModel='',libfiles=[],stats={};
 
 function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=m;document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),4000);}
 async function api(path,opt){const r=await fetch(path,opt);if(!r.ok){let d;try{d=(await r.json()).detail}catch(e){d=r.status}throw new Error(typeof d==='string'?d:JSON.stringify(d));}return r.json();}
 function esc(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmtDur(s){if(s==null)return'—';s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return(h?h+'h ':'')+m+'m'}
 function fmtSize(b){if(b==null)return'—';if(b>1e9)return(b/1e9).toFixed(1)+' GB';if(b>1e6)return(b/1e6).toFixed(0)+' MB';return(b/1e3).toFixed(0)+' KB'}
+function fmtEta(s){if(s==null||s<=0)return'—';const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:(m?`${m}m`:`${Math.ceil(s/60)}m`)}
 
-/* Poll Queue (every 1s) */
+function fmtIST(ts){
+  if(!ts)return'—';
+  const d=new Date(ts);
+  if(isNaN(d.getTime()))return ts;
+  return d.toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' IST';
+}
+
+/* Job-level stage map: the LAST event per stage wins (a retried stage shows
+   its newest state). parse-shot records are warnings, never stage failures. */
+function stageMap(j){
+  const byStage={};
+  (j.events||[]).forEach(e=>{
+    if(e.status==='failed'&&e.detail&&e.detail.startsWith('parse shot'))return;
+    byStage[e.stage]=e.status;
+  });
+  return byStage;
+}
+function activeStageOf(j){
+  if(j.status!=='active')return null;
+  if(lastGpu.active_step&&STAGES.includes(lastGpu.active_step))return lastGpu.active_step;
+  const st=j.events||[];
+  for(let i=st.length-1;i>=0;i--){if(st[i].status==='started')return st[i].stage;}
+  return null;
+}
+
 async function poll(){
   try{
     const d=await api('/api/admin/queue');
@@ -374,81 +393,93 @@ async function poll(){
     if(d.worker.paused){dot.className='dot warn';txt.textContent='worker paused';}
     else if(d.worker.model){dot.className='dot';txt.textContent=d.worker.model;}
     else{dot.className='dot idle';txt.textContent='worker idle';}
-    renderJobs();
-    updatePipelineJourney();
+    renderJobs();renderStatus();updatePipelineJourney();
   }catch(e){
     document.querySelector('#worker-pill .dot').className='dot bad';
     document.getElementById('wtext').textContent='api unreachable';
   }
 }
 
-/* Render Jobs Table */
+/* Condensed status panel */
+function renderStatus(){
+  const act=jobs.find(j=>j.status==='active');
+  const pend=jobs.filter(j=>j.status==='pending').length;
+  const done=jobs.filter(j=>j.status==='done').length;
+  const fail=jobs.filter(j=>j.status==='failed').length;
+  document.getElementById('cnt-pending').textContent=pend;
+  document.getElementById('cnt-done').textContent=done;
+  document.getElementById('cnt-failed').textContent=fail;
+  document.getElementById('cnt-shots').textContent=(stats.shots||0).toLocaleString();
+  document.getElementById('cnt-utts').textContent=(stats.utterances||0).toLocaleString();
+  document.getElementById('cnt-scenes').textContent=stats.scenes||0;
+  const sa=document.getElementById('status-active');
+  const sd=document.getElementById('status-dot');
+  if(act){
+    const as=activeStageOf(act);
+    sd.className='dot';
+    sa.innerHTML=`<span class="dot" id="status-dot"></span><span class="film">${esc(act.code)}</span><span class="stage">${as?`processing · step ${STAGES.indexOf(as)+1}/10 · ${esc(as)}`:'processing'}${lastGpu.step_progress?' · '+esc(lastGpu.step_progress):''}</span>`;
+  }else if(pend){
+    sa.innerHTML=`<span class="dot idle"></span><span>Queued — waiting for worker</span>`;
+  }else{
+    sa.innerHTML=`<span class="dot idle"></span><span>Idle — no active jobs</span>`;
+  }
+}
+
 function renderJobs(){
   const f=document.getElementById('jobfilter').value;
   const rows=jobs.filter(j=>!f||j.status===f);
   const tb=document.getElementById('qbody');
   if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty">'+(f?'No '+f+' jobs.':'Queue empty — submit files from Ingest.')+'</td></tr>';return;}
-
   const scrollMap={};
   document.querySelectorAll('.ev-scroll').forEach(el=>{scrollMap[el.dataset.qid]=el.scrollTop;});
 
   tb.innerHTML=rows.map(j=>{
     const st=j.events||[];
-    const byStage={};
-    st.forEach(e=>{
-      if(e.status==='failed' && e.detail && e.detail.startsWith('parse shot')) return;
-      byStage[e.stage]=e.status;
-    });
-    let activeStage=null;
-    if(j.status==='active'){
-      const wm=(currentWorkerModel||'').split(/[\s(]/)[0];
-      if(STAGES.includes(wm)){
-        activeStage=wm;
-      }else{
-        const lastStarted=[...st].reverse().find(e=>e.status==='started');
-        activeStage=lastStarted?lastStarted.stage:null;
-      }
-    }
+    const byStage=stageMap(j);
+    const activeStage=activeStageOf(j);
     const curStage=activeStage||([...st].reverse().find(e=>e.status==='done')||{}).stage||'—';
     const doneN=Object.values(byStage).filter(s=>s==='done').length;
     const segs=STAGES.map(s=>{
       const cls=byStage[s]==='done'?'done':byStage[s]==='failed'?'failed':(s===activeStage?'active':'');
-      return `<span class="seg ${cls}" title="${s}${byStage[s]?': '+byStage[s]:''}"></span>`;
-    }).join('');
+      return `<span class="seg ${cls}" title="${s}${byStage[s]?': '+byStage[s]:''}"></span>`;}).join('');
     const dotC=j.status==='failed'?'bad':j.status==='active'?'':'idle';
     const open=expanded.has(j.queue_id);
 
+    // whole-job ETA
     let etaHtml='<span class="dim">—</span>';
-    if(j.status==='done') etaHtml='<span style="color:var(--ok)">Done</span>';
-    else if(j.status==='failed') etaHtml='<span style="color:var(--bad)">Halted</span>';
+    if(j.status==='done')etaHtml='<span style="color:var(--ok)">Done</span>';
+    else if(j.status==='failed')etaHtml='<span style="color:var(--bad)">Halted</span>';
+    else if(j.status==='pending')etaHtml='<span class="dim">queued</span>';
     else if(j.status==='active'){
-      const m=(currentWorkerModel||'').match(/ETA\s+([^)]+)/);
-      etaHtml=m?`<span style="color:var(--accent2);font-weight:600">~${esc(m[1])}</span>`:'<span class="dim">calculating…</span>';
+      const jEta = lastGpu.job_eta_str || (lastGpu.job_eta_s > 0 ? fmtEta(lastGpu.job_eta_s) : null);
+      etaHtml = jEta
+        ? `<span style="color:var(--accent2);font-weight:600">~${esc(jEta)}</span>`
+        : '<span class="dim">measuring…</span>';
     }
 
     let ev='';
     if(open){
+      const sEta = lastGpu.step_eta_str ? `~${lastGpu.step_eta_str}` : (lastGpu.step_eta_s > 0 ? `~${fmtEta(lastGpu.step_eta_s)}` : 'measuring…');
       ev=`<tr class="evrow"><td colspan="7">
         <div style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong style="color:var(--fg);font-size:12.5px">Job #${j.queue_id} · Detailed Inspector</strong>
-            <span class="mono dim">Stage: <strong style="color:var(--accent2)">${esc(curStage)}</strong></span>
+            <strong style="font-size:12.5px">Job #${j.queue_id} · Detailed Inspector</strong>
+            <span class="mono dim">Step: <strong style="color:var(--accent2)">${esc(curStage)}</strong></span>
           </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;background:var(--surface2);padding:10px;border-radius:4px;margin-bottom:10px;font-size:11.5px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;background:var(--surface2);padding:10px;border-radius:4px;margin-bottom:10px;font-size:11.5px">
             <div><div class="dim">Active Step</div><div class="mono" style="color:var(--accent2);font-weight:600">${esc(curStage)}</div></div>
-            <div><div class="dim">Stage Progress</div><div class="mono" style="font-weight:600">${esc(currentWorkerModel||'—')}</div></div>
-            <div><div class="dim">Stage ETA</div><div class="mono">${etaHtml}</div></div>
+            <div><div class="dim">Step Progress</div><div class="mono" style="font-weight:600">${esc(lastGpu.step_progress||currentWorkerModel||'—')}</div></div>
+            <div><div class="dim">Step ETA</div><div class="mono" style="color:var(--accent2);font-weight:600">${j.status==='active'?esc(sEta):'—'}</div></div>
+            <div><div class="dim">Total Job ETA</div><div class="mono" style="color:var(--ok);font-weight:700">${etaHtml}</div></div>
             <div><div class="dim">GPU VRAM</div><div class="mono">${lastGpu.used_mb?`${(lastGpu.used_mb/1024).toFixed(1)} / ${(lastGpu.total_mb/1024).toFixed(1)} GB`:'—'}</div></div>
             <div><div class="dim">GPU Util</div><div class="mono" style="color:var(--ok);font-weight:600">${lastGpu.util_pct!=null?lastGpu.util_pct+'%':'—'}</div></div>
           </div>
-
           <div style="font-size:10.5px;font-weight:600;color:var(--fgdim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Timeline Log</div>
           <div class="ev-scroll" data-qid="${j.queue_id}" style="max-height:160px;overflow-y:auto;font-family:var(--mono);font-size:11px">
             ${st.length?st.map(e=>`
               <div style="padding:3px 0;display:flex;gap:10px;border-bottom:1px solid rgba(255,255,255,.03)">
-                <span class="dim">[${esc((e.ts||'').replace('T',' ').slice(11,19))}]</span>
-                <span style="font-weight:600;color:${e.status==='done'?'var(--ok)':e.status==='started'?'var(--accent2)':'var(--bad)'}">${esc(e.stage)}</span>
+                <span class="dim">[${esc(fmtIST(e.ts))}]</span>
+                <span style="font-weight:600;color:${e.status==='done'?'var(--ok)':e.status==='started'?'var(--accent2)':e.status==='warning'?'var(--warn)':'var(--bad)'}">${esc(e.stage)}</span>
                 <span class="dim">${esc(e.status)}${e.detail?' · '+esc(e.detail):''}</span>
                 ${e.err?`<div style="color:var(--bad)">${esc(e.err.slice(-250))}</div>`:''}
               </div>`).join(''):'<div class="dim">No events logged yet.</div>'}
@@ -456,19 +487,19 @@ function renderJobs(){
         </div>
       </td></tr>`;
     }
-
     return `<tr class="jobrow" onclick="toggleEv(${j.queue_id})">
       <td class="mono">${j.queue_id}</td>
       <td class="mono" style="font-weight:600">${esc(j.code)}</td>
       <td>
-        <span class="st"><span class="dot ${dotC}"></span>${j.status}</span><br>
-        <span class="dim" style="font-size:10.5px">${j.status==='active'?`step ${doneN+1}/10 · ${esc(curStage)}`:j.status==='done'?'10/10 done':j.status==='failed'?'failed':''}</span>
+        <span class="st" style="display:inline-flex;align-items:center;gap:6px"><span class="dot ${dotC}"></span>${j.status}</span><br>
+        <span class="dim" style="font-size:10.5px">${j.status==='active'?`step ${doneN+1}/10 · ${esc(curStage)}`:j.status==='done'?'10/10 done':j.status==='failed'?'failed':'—'}</span>
       </td>
       <td class="mono" style="font-size:11.5px">${etaHtml}</td>
       <td>${j.priority}</td>
       <td><span class="segs">${segs}</span></td>
       <td onclick="event.stopPropagation()">
         <button class="tiny" onclick="toggleEv(${j.queue_id})">${open?'▲ Less':'▼ Details'}</button>
+        ${j.status==='failed'?`<button class="tiny" onclick="retry(${j.queue_id})">Retry</button>`:''}
       </td>
     </tr>${ev}`;
   }).join('');
@@ -480,85 +511,64 @@ function renderJobs(){
 
 function toggleEv(qid){expanded.has(qid)?expanded.delete(qid):expanded.add(qid);renderJobs();}
 function filterJobs(s){document.getElementById('jobfilter').value=s;renderJobs();}
+async function retry(id){try{await api(`/api/admin/retry/${id}`,{method:'POST'});poll();}catch(e){toast('retry failed: '+e.message,true);}}
 async function pause(p){try{await api('/api/admin/pause?paused='+p,{method:'POST'});poll();}catch(e){toast('pause failed: '+e.message,true);}}
 
-/* Update Left Panel Pipeline Journey */
+/* Pipeline journey */
 function updatePipelineJourney(){
-  const activeJob = jobs.find(j=>j.status==='active') || jobs[0];
-  const byStage = {};
-  let activeStage = null;
-  if(activeJob && activeJob.events){
-    activeJob.events.forEach(e=>{
-      if(e.status==='failed' && e.detail && e.detail.startsWith('parse shot')) return;
-      byStage[e.stage]=e.status;
-    });
-    if(activeJob.status === 'active'){
-      const wm = (currentWorkerModel || '').split(/[\s(]/)[0];
-      if(STAGES.includes(wm)){
-        activeStage = wm;
-      }else{
-        const lastStarted = [...activeJob.events].reverse().find(e => e.status === 'started');
-        activeStage = lastStarted ? lastStarted.stage : null;
-      }
-    }
-  }
-
+  const activeJob=jobs.find(j=>j.status==='active')||jobs[0];
+  const byStage=activeJob?stageMap(activeJob):{};
+  const activeStage=activeJob?activeStageOf(activeJob):null;
   STAGES.forEach(s=>{
-    const card = document.getElementById('sc-'+s);
-    const tag = document.getElementById('stg-'+s);
-    if(!card) return;
-    const st = byStage[s];
+    const card=document.getElementById('sc-'+s);
+    const tag=document.getElementById('stg-'+s);
+    const eta=document.getElementById('eta-'+s);
+    if(!card)return;
+    const st=byStage[s];
     card.classList.remove('active','done');
-    if(s === activeStage){
-      card.classList.add('active');
-      tag.textContent = 'running';
-      tag.style.color = '';
-    }else if(st === 'done'){
-      card.classList.add('done');
-      tag.textContent = 'done ✓';
-      tag.style.color = '';
-    }else if(st === 'failed' && activeJob && activeJob.status === 'failed'){
-      tag.textContent = 'failed ✕';
-      tag.style.color = 'var(--bad)';
+    if(eta)eta.style.display='none';
+    if(s===activeStage){
+      card.classList.add('active');tag.textContent='running';tag.style.color='';
+      if(eta){
+        eta.style.display='flex';
+        const sEta = lastGpu.step_eta_str || (lastGpu.step_eta_s > 0 ? fmtEta(lastGpu.step_eta_s) : null);
+        eta.querySelector('b').textContent = sEta ? `~${sEta}` : 'measuring…';
+      }
+    }else if(st==='done'){
+      card.classList.add('done');tag.textContent='done ✓';tag.style.color='';
+    }else if(st==='failed'){
+      tag.textContent='failed ✕';tag.style.color='var(--bad)';
     }else{
-      tag.textContent = 'queued';
-      tag.style.color = '';
+      tag.textContent='queued';tag.style.color='';
     }
   });
-
-  // Active progress indicators
-  const pShotvl = document.getElementById('prog-shotvl');
-  const pVlm = document.getElementById('prog-vlm');
-  const pWhisper = document.getElementById('prog-whisper');
-  const pScene = document.getElementById('prog-scenedetect');
-
-  if(activeStage === 'shotvl'){
-    pShotvl.style.display = 'block';
-    const m = (currentWorkerModel||'').match(/(\d+)\/(\d+)\s+·\s+(\d+)%/);
+  ['shotvl','vlm','whisper','scenedetect'].forEach(s=>{
+    const p=document.getElementById('prog-'+s);
+    if(!p)return;
+    p.style.display=(s===activeStage)?'block':'none';
+  });
+  if(activeStage==='shotvl'&&lastGpu.step_progress){
+    const m=lastGpu.step_progress.match(/(\d+)\/(\d+)(?:[^\d]+(\d+)%)?/);
     if(m){
-      document.getElementById('txt-shotvl').textContent = `${m[1]} / ${m[2]} shots (${m[3]}%)`;
-      document.getElementById('bar-shotvl').style.width = m[3] + '%';
+      const done=(+m[1]).toLocaleString(), total=(+m[2]).toLocaleString();
+      const pct=m[3]||Math.round(+m[1]/+m[2]*100);
+      document.getElementById('txt-shotvl').textContent=`${done} / ${total} shots (${pct}%)`;
+      document.getElementById('bar-shotvl').style.width=pct+'%';
     }
-  } else {
-    pShotvl.style.display = 'none';
   }
-
-  if(activeStage === 'vlm'){
-    pVlm.style.display = 'block';
-    const m = (currentWorkerModel||'').match(/(\d+)\/(\d+)\s+·\s+(\d+)%/);
+  if(activeStage==='vlm'&&lastGpu.step_progress){
+    const m=lastGpu.step_progress.match(/(\d+)\/(\d+)(?:[^\d]+(\d+)%)?/);
     if(m){
-      document.getElementById('txt-vlm').textContent = `${m[1]} / ${m[2]} shots (${m[3]}%)`;
-      document.getElementById('bar-vlm').style.width = m[3] + '%';
+      const done=(+m[1]).toLocaleString(), total=(+m[2]).toLocaleString();
+      const pct=m[3]||Math.round(+m[1]/+m[2]*100);
+      document.getElementById('txt-vlm').textContent=`${done} / ${total} shots (${pct}%)`;
+      document.getElementById('bar-vlm').style.width=pct+'%';
     }
-  } else {
-    pVlm.style.display = 'none';
   }
-
-  pWhisper.style.display = (activeStage === 'whisper') ? 'block' : 'none';
-  pScene.style.display = (activeStage === 'scenedetect') ? 'block' : 'none';
+  if(activeStage==='whisper')document.getElementById('txt-whisper').textContent=lastGpu.step_progress||'Transcribing…';
+  if(activeStage==='scenedetect')document.getElementById('txt-scenedetect').textContent=lastGpu.step_progress||'Detecting cuts…';
 }
 
-/* Poll GPU (every 1s) */
 async function pollGpu(){
   try{
     const g=await api('/api/admin/gpu');
@@ -569,112 +579,71 @@ async function pollGpu(){
     document.getElementById('g-vrambar').style.width=(g.used_mb/g.total_mb*100)+'%';
     document.getElementById('g-util').textContent=(g.util_pct!=null?g.util_pct:'0')+'%';
     document.getElementById('g-temp').textContent=(g.temp_c!=null?g.temp_c:'—')+'°C';
-    document.getElementById('g-power').textContent=(g.power_w!=null?Math.round(g.power_w)+' W / 170 W':'—');
-  }catch(e){}
-  try{
-    const q=await api('/api/admin/queue');
-    currentWorkerModel=q.worker.model||'';
-    document.getElementById('g-model').textContent=currentWorkerModel||'idle';
+    document.getElementById('g-power').textContent=(g.power_w!=null?Math.round(g.power_w)+' / '+Math.round(g.power_limit_w||170)+' W':'—');
+    document.getElementById('g-model').textContent=(g.active_step&&g.active_step!=='idle')?`${g.active_step} · ${g.step_progress}`:'idle';
   }catch(e){}
 }
 
-/* Poll Stats (every 1s) */
 async function pollStats(){
-  try{
-    const s=await api('/api/admin/stats');
-    document.getElementById('s-files').textContent=s.files;
-    document.getElementById('s-shots').textContent=s.shots.toLocaleString();
-    document.getElementById('s-utts').textContent=s.utterances.toLocaleString()+' utterances · '+s.scenes+' scenes';
-    document.getElementById('s-queue').textContent=s.pending+' pend / '+s.active+' act';
-    document.getElementById('s-vol').textContent=fmtSize(s.source_bytes)+' · '+s.corrections+' corrections';
-    document.getElementById('s-failed').textContent=s.failed;
-    document.getElementById('s-gpu').textContent=s.gpu?`${s.gpu.name} · ${s.gpu.util_pct}% · ${(s.gpu.used_mb/1024).toFixed(1)}GB`:'GPU stats via worker';
-    document.getElementById('tile-failed').style.opacity=s.failed?1:.5;
-  }catch(e){}
+  try{stats=await api('/api/admin/stats');renderStatus();}catch(e){}
 }
 
-/* Right Panel: Media Library */
 async function pollLibrary(){
-  try{
-    libfiles=(await api('/api/admin/library')).files;
-    renderLibrary();
-  }catch(e){
-    document.getElementById('liblist').innerHTML='<div class="empty">Failed loading library.</div>';
-  }
+  try{libfiles=(await api('/api/admin/library')).files;renderLibrary();}
+  catch(e){document.getElementById('liblist').innerHTML='<div class="empty">Failed loading library.</div>';}
 }
-
 function renderLibrary(){
   const f=(document.getElementById('libfilter').value||'').toLowerCase();
   const rows=libfiles.filter(x=>!f||x.code.toLowerCase().includes(f)||x.path.toLowerCase().includes(f)||(x.category||'').toLowerCase().includes(f));
   const el=document.getElementById('liblist');
-  if(!rows.length){
-    el.innerHTML='<div class="empty">'+(libfiles.length?'No matching files.':'Library is empty.')+'</div>';
-    return;
-  }
+  if(!rows.length){el.innerHTML='<div class="empty">'+(libfiles.length?'No matching files.':'Library is empty.')+'</div>';return;}
   el.innerHTML=rows.map(x=>`
     <div class="lib-card">
       <div class="lib-top">
         <span class="lib-code">${esc(x.code)}</span>
         ${x.category?`<span class="lib-cat">${esc(x.category)}</span>`:''}
-        <span class="st" style="margin-left:auto"><span class="dot ${x.status==='done'?'':x.status==='failed'?'bad':'idle'}"></span>${x.status}</span>
+        <span class="st" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px"><span class="dot ${x.status==='done'?'':x.status==='failed'?'bad':'idle'}"></span>${x.status}</span>
       </div>
       <div class="lib-path">${esc(x.path)}</div>
       <div class="lib-meta">
-        <span>⏱ ${fmtDur(x.duration_s)}</span>
-        <span>💾 ${fmtSize(x.size_bytes)}</span>
-        <span>🎬 ${x.shots} shots</span>
-        <span>💬 ${x.utterances} utt</span>
+        <span>⏱ ${fmtDur(x.duration_s)}</span><span>💾 ${fmtSize(x.size_bytes)}</span>
+        <span>🎬 ${x.shots}</span><span>💬 ${x.utterances}</span>
       </div>
       <div class="lib-actions">
         <button class="tiny primary" onclick="location='/?file_code='+encodeURIComponent('${esc(x.code)}')">Search File</button>
         <button class="tiny" id="del_${x.file_id}" onclick="delFile(${x.file_id},'${esc(x.code)}')">Remove</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
-
 async function delFile(id,code){
   const b=document.getElementById('del_'+id);
-  if(!b.classList.contains('armed')){
-    b.classList.add('armed');
-    b.textContent='Confirm? (source stays on disk)';
-    setTimeout(()=>{b.classList.remove('armed');b.textContent='Remove';},3500);
-    return;
-  }
-  try{
-    await api(`/api/admin/library/${id}/delete`,{method:'POST'});
-    toast(code+' removed from library');
-    pollLibrary();pollStats();
-  }catch(e){toast('remove failed: '+e.message,true);}
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Confirm?';setTimeout(()=>{b.classList.remove('armed');b.textContent='Remove';},3500);return;}
+  try{await api(`/api/admin/library/${id}/delete`,{method:'POST'});toast(code+' removed from index');pollLibrary();pollStats();}
+  catch(e){toast('remove failed: '+e.message,true);}
 }
 
-/* Model Config Updates from Left Panel */
 async function loadConfig(){
   try{
     const c=await api('/api/admin/config');
     if(c.models){
-      if(c.models.whisper) document.getElementById('m-whisper').value=c.models.whisper;
-      if(c.models.vlm) document.getElementById('m-vlm').value=c.models.vlm;
-      if(c.models.narrative) document.getElementById('m-narrative').value=c.models.narrative;
+      if(c.models.whisper)document.getElementById('m-whisper').value=c.models.whisper;
+      if(c.models.vlm)document.getElementById('m-vlm').value=c.models.vlm;
+      if(c.models.narrative)document.getElementById('m-narrative').value=c.models.narrative;
     }
   }catch(e){}
 }
-
 async function updateModel(type,val){
   try{
     const c=await api('/api/admin/config');
-    if(!c.models) c.models={};
+    if(!c.models)c.models={};
     c.models[type]=val;
     await api('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({models:c.models})});
     toast(`Model updated: ${type} → ${val}`);
-  }catch(e){
-    toast('model update failed: '+e.message,true);
-  }
+  }catch(e){toast('model update failed: '+e.message,true);}
 }
 
-/* Init & 1-Second Periodic Updates */
 poll();pollStats();pollGpu();pollLibrary();loadConfig();
-setInterval(()=>{poll();pollGpu();pollStats();}, 1000);
-setInterval(pollLibrary, 10000);
+setInterval(()=>{poll();pollGpu();},1000);
+setInterval(pollLibrary,10000);
 </script>
 </body></html>
