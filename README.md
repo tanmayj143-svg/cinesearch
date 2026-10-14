@@ -118,4 +118,6 @@ docker compose ps
 
 ## License & Disclaimer
 
-This project is provided as-is for self-hosted cinematic research and editorial cataloging. Review security configurations before exposing endpoints to untrusted networks.
+This project is licensed under the [MIT License](LICENSE) © 2026 Tanmay Jain.
+
+See [`DISCLAIMER.md`](DISCLAIMER.md) for full AI-assisted provenance and disclaimer statements. Review network configurations before exposing endpoints to untrusted networks.
