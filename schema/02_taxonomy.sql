@@ -1,7 +1,7 @@
 -- Narrative taxonomy: three orthogonal axes, as lookup tables (LLM prompt reads these)
 CREATE TABLE taxonomy (
     tax_id serial PRIMARY KEY,
-    axis   text NOT NULL,          -- scene_function | shot_role | sequence_type
+    axis   text NOT NULL,          -- scene_function | shot_role | sequence_type | category
     label  text NOT NULL,
     UNIQUE (axis, label)
 );

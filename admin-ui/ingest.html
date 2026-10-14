@@ -3,160 +3,269 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CineSearch — Ingest</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-:root{--v:#8b3dff;--violet:#a060ff;--pink:#ff4ec8;--bg:#0a0514;--surface:#120a20;--line:#2a1a38;--fg:#f3e8ff;--fg-dim:#b08dc8;--ok:#5ad18a;--bad:#ff5c8a}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+:root{
+  --bg:#0b0714;--surface:#130c1f;--surface2:#1a1128;--line:#261839;
+  --fg:#ede6f7;--fgdim:#9a86b8;--accent:#8b3dff;--accent2:#ff4ec8;
+  --ok:#4ecf8a;--warn:#e8b74a;--bad:#ff5c7a;--mono:ui-monospace,'JetBrains Mono',monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,#0a0514 0%,#14082a 60%,#120a20 100%);min-height:100vh;color:var(--fg);font:14px/1.6 Inter,system-ui,sans-serif;padding:24px 20px}
-h1{font-size:26px;font-weight:800;color:var(--pink);letter-spacing:-.03em;text-shadow:0 0 30px rgba(255,78,200,.35);margin:0 0 4px}
-.sub{font-size:11px;color:var(--fg-dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px}
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 8px 40px rgba(139,61,255,.1),inset 0 1px 0 rgba(255,255,255,.05);max-width:1100px;margin:0 auto 20px}
-label{font-size:10px;color:var(--violet);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;display:block}
-input,select{background:#0f0518;border:1px solid #3a2055;color:#fff;border-radius:10px;padding:9px 12px;font:inherit;transition:.15s}
-input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,78,200,.15)}
-button{cursor:pointer;border:0;border-radius:10px;padding:10px 18px;font:600 14px Inter;background:linear-gradient(135deg,#8b3dff,#ff4ec8);color:#fff;box-shadow:0 4px 20px rgba(139,61,255,.35);transition:.15s}
-button:hover{box-shadow:0 6px 30px rgba(255,78,200,.5);transform:translateY(-1px)}
-button:disabled{opacity:.4;cursor:not-allowed;transform:none}
-button.ghost{background:transparent;color:var(--violet);border:1px solid #3a2055;box-shadow:none}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.code{font-family:ui-monospace,monospace;font-size:12px;color:var(--pink);background:#1a0828;padding:2px 8px;border-radius:6px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{color:var(--fg-dim);text-align:left;padding:8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.08em}
-td{padding:8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
-.tag{display:inline-block;background:rgba(139,61,255,.12);color:var(--violet);border:1px solid rgba(139,61,255,.3);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600}
-.status-ok{color:var(--ok)}.status-bad{color:var(--bad)}.status-dim{color:var(--fg-dim)}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.55 Inter,system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+header{height:48px;display:flex;align-items:center;gap:22px;padding:0 20px;border-bottom:1px solid var(--line)}
+.wordmark{font-size:13px;font-weight:600;letter-spacing:.18em}
+nav{display:flex;gap:4px}
+nav a{color:var(--fgdim);text-decoration:none;font-size:13px;padding:4px 10px;border-bottom:2px solid transparent}
+nav a.on{color:var(--fg);border-bottom-color:var(--accent2)}
+main{flex:1;max-width:1340px;width:100%;margin:0 auto;padding:24px 20px}
+.table-wrap{width:100%;overflow-x:auto;margin-top:10px}
+.fn-cell{font-family:var(--mono);font-size:12px;color:var(--accent2);white-space:nowrap;padding:7px 10px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 20px;margin-bottom:18px}
+.step.disabled{opacity:.45;pointer-events:none}
+.stepno{display:inline-flex;width:22px;height:22px;border-radius:50%;border:1px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;align-items:center;justify-content:center;margin-right:8px}
+h2{font-size:13px;font-weight:600;margin:0 0 14px;display:flex;align-items:center}
+h2 .ok{margin-left:auto;color:var(--ok);font-size:11px;font-weight:400}
+label{font-size:11px;color:var(--fgdim);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px}
+input,select{background:var(--surface2);border:1px solid var(--line);color:var(--fg);border-radius:4px;padding:8px 10px;font:inherit}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+button{cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:8px 14px;font:600 12px Inter;background:var(--surface2);color:var(--fg);transition:border-color .12s}
+button:hover{border-color:var(--accent)}
+button.primary{background:linear-gradient(135deg,#8b3dff,#ff4ec8);border:0;color:#fff;padding:10px 20px;font-size:13px}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.tiny{padding:3px 9px;font-size:11px}
+.row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+th{color:var(--fgdim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.mono{font-family:var(--mono);font-size:12px}
+.dim{color:var(--fgdim);font-size:11px}
+.empty{color:var(--fgdim);padding:20px;text-align:center}
+.msg{font-size:12px;margin-top:10px}
+.lblin{width:100%;min-width:160px;font-family:var(--mono);font-size:12px}
+.lblin.conflict{border-color:var(--bad)}
+.applybar{display:flex;gap:8px;align-items:center;margin:12px 0;padding:10px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:6px}
+#toast{position:fixed;top:58px;right:18px;z-index:99;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px;padding:10px 14px;font-size:12px;max-width:340px}
+.toast.bad{border-left-color:var(--bad)}
+.prow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.idle{background:var(--fgdim)}
 </style></head><body>
-<h1>Ingest <span style="font-size:12px;color:var(--violet);font-weight:300">MANAGE FOLDER BATCH</span></h1>
-<div class="sub">Pick a library folder, label the batch, assign File IDs, submit</div>
-
-<div class="card">
-  <div class="row" style="gap:14px;align-items:flex-end">
-    <div style="flex:2;min-width:260px">
-      <label for="folder">Library folder (recursive video scan)</label>
-      <select id="folder" style="width:100%"><option value="">loading folders…</option></select>
-    </div>
-    <div style="flex:1;min-width:220px">
-      <label for="folderPrefix">ID prefix for this folder (e.g. FILM-001)</label>
-      <input id="folderPrefix" style="width:100%" placeholder="FILM-001">
-    </div>
-    <button id="scanBtn" onclick="scanFolder()">Scan Folder</button>
-  </div>
-  <div id="scanmsg" class="status-dim" style="font-size:12px;margin-top:8px"></div>
-</div>
-
-<div class="card">
-  <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Media drop <span style="font-size:11px;color:var(--fg-dim);font-weight:300">— files in /media on the server; pick into the library</span></h2>
-  <table><thead><tr><th>Item</th><th>Kind</th><th>Videos</th><th>Size</th><th></th></tr></thead><tbody id="mediaBody"><tr><td colspan="5" class="status-dim">Loading…</td></tr></tbody></table>
-  <div class="row" style="margin-top:10px"><button class="ghost" onclick="loadMedia()">Refresh /media</button>
-  <span id="mediamsg" class="status-dim" style="font-size:12px"></span></div>
-</div>
-
-<div class="card">
-  <h2 style="font-size:16px;color:var(--pink);margin:0 0 14px">Eligible Video Files <span style="font-size:11px;color:var(--fg-dim);font-weight:300">(recursive; non-video excluded)</span></h2>
-  <table><thead><tr><th><input type="checkbox" id="selall" checked onchange="toggleAll(this)"></th><th>File</th><th>Size</th><th>Assigned File ID (prefix + number)</th></tr></thead><tbody id="fileBody"><tr><td colspan="4" class="status-dim">Choose a folder and click "Scan Folder".</td></tr></tbody></table>
-  <div class="row" style="margin-top:16px;justify-content:space-between">
-    <div id="submitmsg" class="status-dim" style="font-size:12px"></div>
+<header>
+  <span class="wordmark">CINESEARCH</span>
+  <nav>
+    <a href="/">Search</a>
+    <a href="/admin/">Queue</a>
+    <a href="/admin/ingest.html" class="on">Ingest</a>
+  </nav>
+</header>
+<main>
+  <!-- STEP 1: pick folder from /media -->
+  <div class="step" id="step1">
+    <h2><span class="stepno">1</span>Source folder <span class="dim" style="font-weight:400;margin-left:6px">/media on the host</span><span class="ok" id="s1ok"></span></h2>
     <div class="row">
-      <button class="ghost" id="cleanBtn" onclick="cleanFolder()">Clean Up Folder</button>
-      <button id="submitBtn" onclick="submitBatch()" disabled>Submit Selected</button>
+      <div style="flex:2;min-width:240px">
+        <label>Folder</label>
+        <select id="folder" style="width:100%"><option value="">loading…</option></select>
+      </div>
+      <button onclick="scan()" id="scanBtn">Scan folder</button>
+      <button class="tiny" onclick="tidy()" id="tidyBtn" style="display:none">Tidy folder…</button>
     </div>
+    <div class="msg dim" id="scanmsg"></div>
   </div>
-</div>
 
-<div style="text-align:center;margin-top:10px"><a href="index.html" style="color:var(--violet);text-decoration:none;font-size:12px">← Back to Admin</a></div>
+  <!-- STEP 2: files, basic numbering, custom IDs & categories -->
+  <div class="step disabled" id="step2">
+    <h2><span class="stepno">2</span>Files, IDs &amp; Categories<span class="ok" id="s2ok"></span></h2>
+    <div class="applybar" style="flex-wrap:wrap;gap:14px;align-items:flex-end">
+      <div style="flex:2;min-width:240px">
+        <label>Batch Category (optional text box)</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="batchPrefix" placeholder="e.g. bollywood, action, etc." list="catList" style="flex:1">
+          <button onclick="applyPrefix()">Apply category to all</button>
+        </div>
+      </div>
+      <div style="flex:2;min-width:260px">
+        <label>File ID Helper (optional)</label>
+        <div style="display:flex;gap:6px">
+          <button onclick="autoNumber()">Auto-number IDs (1, 2, 3…)</button>
+          <button class="tiny" onclick="clearAllIds()">Clear IDs</button>
+        </div>
+      </div>
+      <datalist id="catList"></datalist>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px"><input type="checkbox" id="selall" checked onchange="toggleAll(this)"></th>
+            <th style="min-width:280px">Source File</th>
+            <th style="width:90px;white-space:nowrap">Size</th>
+            <th style="width:130px">File ID</th>
+            <th style="width:140px">Category</th>
+            <th style="width:200px">Final File Name</th>
+          </tr>
+        </thead>
+        <tbody id="fileBody"></tbody>
+      </table>
+    </div>
 
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap;gap:10px">
+      <div id="summary" class="dim" style="font-size:12px"></div>
+      <button class="primary" id="submitBtn" onclick="submitBatch()" style="padding:10px 24px;font-size:13px">Submit Batch</button>
+    </div>
+    <div id="progress" style="margin-top:14px"></div>
+  </div>
+</main>
+<div id="toast"></div>
 <script>
-let files=[], nextNum=1;
+function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=m;document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),4500);}
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok){let d;try{d=(await r.json()).detail}catch(e){d=r.status}throw new Error(typeof d==='string'?d:JSON.stringify(d));}return r.json();}
+function esc(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtSize(b){if(b>1e9)return(b/1e9).toFixed(1)+' GB';if(b>1e6)return(b/1e6).toFixed(0)+' MB';return(b/1e3).toFixed(0)+' KB';}
 
-async function loadFolders(){
+let files=[],schemes=[],catOptions=[];
+async function loadCategories(){
   try{
-    const d=await(await fetch('/api/admin/folders')).json();
-    document.getElementById('folder').innerHTML=(d.folders||[]).map(f=>`<option value="${f}">${f}</option>`).join('')||'<option value="sources">sources</option>';
-  }catch(e){
-    document.getElementById('folder').innerHTML='<option value="sources">sources</option>';
+    catOptions=(await api('/api/filters/category')).values.map(v=>v.value);
+    document.getElementById('catList').innerHTML=catOptions.map(c=>`<option value="${esc(c)}">`).join('');
+  }catch(e){}
+}
+async function init(){
+  try{
+    const d=await api('/api/admin/folders');
+    document.getElementById('folder').innerHTML=(d.folders||[]).map(f=>`<option value="${esc(f.path || f.name)}">${esc(f.name)} (${f.videos} video${f.videos===1?'':'s'})</option>`).join('')||'<option value="">/media is empty</option>';
+  }catch(e){document.getElementById('folder').innerHTML='<option value="">folders unavailable</option>';}
+  try{
+    schemes=(await api('/api/admin/schemes')).schemes;
+  }catch(e){}
+  loadCategories();
+}
+async function scan(){
+  const folder=document.getElementById('folder').value;
+  if(!folder)return;
+  const label=(folder==='.'?'All /media':(folder==='__root__'?'/media root files':'/media/'+folder));
+  document.getElementById('scanmsg').textContent='scanning '+label+'…';
+  document.getElementById('tidyBtn').style.display='none';
+  try{
+    const d=await api('/api/admin/library_scan?folder='+encodeURIComponent(folder));
+    files=d.files||[];
+    const gb=files.reduce((a,f)=>a+f.size_bytes,0);
+    document.getElementById('scanmsg').textContent=`${label} — ${files.length} video${files.length===1?'':'s'}, ${fmtSize(gb)}`;
+    document.getElementById('s1ok').textContent=files.length?files.length+' files ready':'';
+    if(folder!=='.' && folder!=='__root__') document.getElementById('tidyBtn').style.display='inline-block';
+    document.getElementById('step2').classList.toggle('disabled',!files.length);
+    renderList();
+  }catch(e){document.getElementById('scanmsg').textContent='scan failed: '+e.message;}
+}
+function getFinalName(i,name,code,cat){
+  const dot=name.lastIndexOf('.');
+  const ext=dot!==-1?name.slice(dot):'';
+  const c=(code||'').trim();
+  const p=(cat||'').trim();
+  if(!c&&!p)return `<span class="dim" style="font-weight:400">${esc(name)} (unchanged)</span>`;
+  if(!c&&p)return `<span class="dim" style="font-weight:400">${esc(p+'_'+name)}</span>`;
+  return `<strong>${esc(p?p+'_':'')}${esc(c)}${esc(ext)}</strong>`;
+}
+function updateRowName(i){
+  const code=document.querySelector(`.codein[data-i="${i}"]`)?.value||'';
+  const cat=document.querySelector(`.catin[data-i="${i}"]`)?.value||'';
+  const el=document.getElementById(`fn_${i}`);
+  if(el&&files[i]){
+    el.innerHTML=getFinalName(i,files[i].name,code,cat);
   }
 }
-async function scanFolder(){
-  const folder=document.getElementById('folder').value;
-  document.getElementById('scanmsg').textContent='scanning '+folder+'…';
-  document.getElementById('submitBtn').disabled=true;
-  try{
-    const d=await(await fetch('/api/admin/library_scan?folder='+encodeURIComponent(folder))).json();
-    files=d.files||[];
-    // auto-suggest next number from existing codes matching prefix
-    nextNum=1; renderList();
-    document.getElementById('scanmsg').textContent=files.length+' eligible video file(s) found in '+folder;
-  }catch(e){document.getElementById('scanmsg').textContent='scan failed: '+e;}
+function updateAllFinalNames(){
+  files.forEach((f,i)=>updateRowName(i));
 }
-function fmtSize(b){if(b>1e9)return (b/1e9).toFixed(1)+' GB';if(b>1e6)return (b/1e6).toFixed(0)+' MB';return (b/1e3).toFixed(0)+' KB';}
 function renderList(){
-  const prefix=document.getElementById('folderPrefix').value.trim();
   document.getElementById('fileBody').innerHTML=files.length?files.map((f,i)=>{
-    const id=prefix?`${prefix}-${String(i+nextNum).padStart(4,'0')}`:'';
+    const code=f.custom_code||'';
+    const cat=f.custom_cat||'';
+    const finalNameHtml=getFinalName(i,f.name,code,cat);
     return `<tr>
-      <td><input type="checkbox" class="fchk" data-i="${i}" checked onchange="updateCount()"></td>
-      <td><strong>${f.name}</strong><br><span class="status-dim" style="font-size:11px;font-family:monospace">${f.rel_path}</span></td>
-      <td><span class="tag">${fmtSize(f.size_bytes)}</span></td>
-      <td><input class="fid" data-i="${i}" style="width:100%;min-width:170px" placeholder="${prefix?'prefix-number':'FILE-0001'}" value="${id}"></td>
-    </tr>`;}).join(''):'<tr><td colspan="4" class="status-dim">No eligible video files found.</td></tr>';
-  document.getElementById('submitBtn').disabled=!files.length;
-  updateCount();
+      <td><input type="checkbox" class="fchk" data-i="${i}" checked onchange="updateReview()"></td>
+      <td><strong>${esc(f.name)}</strong><br><span class="dim mono" style="font-size:11px">${esc(f.rel_path)}</span></td>
+      <td class="dim" style="white-space:nowrap;width:90px">${fmtSize(f.size_bytes)}</td>
+      <td style="width:130px">
+        <input type="text" class="codein mono" data-i="${i}" value="${esc(code)}" oninput="updateRowName(${i})" style="width:100%;font-weight:600;color:var(--accent2);padding:6px 10px;border-radius:4px" placeholder="e.g. ${i+1}">
+      </td>
+      <td style="width:140px">
+        <input type="text" class="catin mono" data-i="${i}" value="${esc(cat)}" oninput="updateRowName(${i})" placeholder="optional" list="catList" style="width:100%;padding:6px 10px;border-radius:4px">
+      </td>
+      <td class="fn-cell" id="fn_${i}" style="width:200px;max-width:240px;overflow:hidden;text-overflow:ellipsis">
+        ${finalNameHtml}
+      </td>
+    </tr>`;
+  }).join('')
+  :'<tr><td colspan="6" class="empty">No eligible video files found.</td></tr>';
+  document.getElementById('s2ok').textContent=files.length?files.length+' scanned':'';
+  updateReview();
 }
-document.getElementById('folderPrefix').addEventListener('input',renderList);
-function toggleAll(cb){document.querySelectorAll('.fchk').forEach(c=>c.checked=cb.checked);updateCount();}
-function updateCount(){
+function applyPrefix(){
+  const p=document.getElementById('batchPrefix').value.trim();
+  document.querySelectorAll('.catin').forEach(el=>el.value=p);
+  updateAllFinalNames();
+  toast(p?`Applied category "${p}" to all rows`:'Cleared categories');
+}
+function autoNumber(){
+  document.querySelectorAll('.codein').forEach((el,idx)=>{
+    el.value=String(idx+1);
+  });
+  updateAllFinalNames();
+  toast('Assigned basic numbering 1, 2, 3…');
+}
+function clearAllIds(){
+  document.querySelectorAll('.codein').forEach(el=>el.value='');
+  updateAllFinalNames();
+  toast('Cleared all File IDs');
+}
+function toggleAll(cb){document.querySelectorAll('.fchk').forEach(c=>c.checked=cb.checked);updateReview();}
+function updateReview(){
   const n=document.querySelectorAll('.fchk:checked').length;
-  document.getElementById('submitBtn').textContent=`Submit Selected (${n})`;
+  const gb=[...document.querySelectorAll('.fchk:checked')].reduce((a,c)=>a+files[c.dataset.i].size_bytes,0);
+  document.getElementById('summary').textContent=n?`${n} file${n===1?'':'s'} selected · ${fmtSize(gb)}`:'No files selected';
+  document.getElementById('submitBtn').textContent=`Submit ${n} file${n===1?'':'s'}`;
+  document.getElementById('submitBtn').disabled=!n;
 }
 async function submitBatch(){
   const checks=[...document.querySelectorAll('.fchk:checked')];
-  const msg=document.getElementById('submitmsg');
-  if(!checks.length){msg.textContent='nothing selected';return;}
-  let ok=0,fail=0,details=[];
-  msg.textContent='submitting…';
+  if(!checks.length){toast('No files selected',true);return;}
+  const prog=document.getElementById('progress');
+  prog.innerHTML=checks.map(c=>`<div class="prow" id="pr_${c.dataset.i}"><span class="dot idle"></span><span class="mono">${esc(files[c.dataset.i].name)}</span><span class="dim" style="margin-left:auto">queued…</span></div>`).join('');
+  document.getElementById('submitBtn').disabled=true;
+  let ok=0,fail=0;
   for(const c of checks){
-    const i=c.dataset.i, f=files[i];
-    const id=document.querySelector(`.fid[data-i="${i}"]`).value.trim();
+    const i=c.dataset.i,row=document.getElementById('pr_'+i);
+    const code=document.querySelector(`.codein[data-i="${i}"]`).value.trim();
+    const cat=document.querySelector(`.catin[data-i="${i}"]`).value.trim();
     try{
-      const r=await fetch(`/api/ingest?rel_path=${encodeURIComponent(f.rel_path)}${id?'&file_code='+encodeURIComponent(id):''}`,{method:'POST'});
-      if(r.ok){const j=await r.json();ok++;details.push(`✓ ${j.file_code} ← ${f.name}`);}
-      else{fail++;const e=await r.json().catch(()=>({}));details.push(`✗ ${f.name}: ${(e.detail||r.status)}`);}
-    }catch(e){fail++;details.push(`✗ ${f.name}: ${e}`);}
+      let url=`/api/ingest?rel_path=${encodeURIComponent(files[i].rel_path)}&priority=100`;
+      if(code) url += `&file_code=${encodeURIComponent(code)}`;
+      if(cat) url += `&category=${encodeURIComponent(cat)}`;
+      const j=await api(url,{method:'POST'});
+      row.innerHTML=`<span class="dot ok"></span><span class="mono">${esc(files[i].name)}</span><span class="dim" style="margin-left:auto">→ <strong>${esc(j.file_code)}</strong>${cat?' · '+esc(cat):''}</span>`;
+      ok++;
+    }catch(e){
+      row.innerHTML=`<span class="dot bad"></span><span class="mono">${esc(files[i].name)}</span><span class="dim" style="margin-left:auto;color:var(--bad)">${esc(e.message)}</span>`;
+      fail++;
+    }
   }
-  msg.innerHTML=`<b class="${fail?'status-bad':'status-ok'}">${ok} queued, ${fail} failed</b><br>`+details.join('<br>');
-  scanFolder();
+  document.getElementById('submitBtn').disabled=false;
+  toast(`${ok} queued, ${fail} failed — background worker processing.`,fail>0);
+  if(ok){init();document.getElementById('step2').classList.add('disabled');}
 }
-async function cleanFolder(){
+async function tidy(){
   const folder=document.getElementById('folder').value;
-  if(!folder){document.getElementById('submitmsg').textContent='choose a folder first';return;}
-  if(confirm('Clean up '+folder+' — flatten subfolders, delete non-video files? (videos are kept, renamed by File ID on ingest)')){
-    const r=await fetch('/api/admin/folder_cleanup?folder='+encodeURIComponent(folder),{method:'POST'});
-    const d=await r.json();
-    document.getElementById('submitmsg').innerHTML=r.ok
-      ?`<b class="status-ok">Folder cleaned</b>: ${d.moved} file(s) flattened, ${(d.deleted||[]).length} deleted<br>`+(d.deleted||[]).join('<br>')
-      :`<b class="status-bad">cleanup failed:</b> ${d.detail||r.status}`;
-    scanFolder();
-  }
-}
-async function loadMedia(){
-  const tbody=document.getElementById('mediaBody');
+  if(!folder)return;
   try{
-    const d=await(await fetch('/api/admin/media')).json();
-    tbody.innerHTML=d.items.length?d.items.map(m=>{const nm=m.name.replace(/'/g,"\\'");return `<tr>
-      <td><strong>${m.name}</strong></td><td>${m.kind}</td>
-      <td>${m.kind==='folder'?m.videos:(m.video?'1':'—')}</td>
-      <td>${m.size_bytes!=null?fmtSize(m.size_bytes):'—'}</td>
-      <td><button class="tiny ghost" onclick="pickMedia('${nm}')">Move to sources/</button></td></tr>`}).join('')
-      :`<tr><td colspan="5" class="status-dim">/media is empty — populate ${d.media_root} on the server (host: /media/video-pipeline/cinesearch/media).</td></tr>`;
-  }catch(e){tbody.innerHTML='<tr><td colspan="5" class="status-bad">media endpoint unavailable</td></tr>';}
+    const dry=await api('/api/admin/folder_cleanup?folder='+encodeURIComponent(folder),{method:'POST'});
+    if(!dry.would_move&&!dry.would_trash){toast('Folder is already tidy.');return;}
+    if(!confirm(`${dry.would_move} video(s) move to ${folder}/, ${dry.would_trash} non-video file(s) move to ${folder}/_trash/.\nNothing is deleted. Proceed?`))return;
+    const d=await api('/api/admin/folder_cleanup?folder='+encodeURIComponent(folder)+'&execute=true',{method:'POST'});
+    toast(`Tidied: ${d.moved} moved, ${d.trashed.length} preserved in _trash/`);
+    scan();
+  }catch(e){toast('tidy failed: '+e.message,true);}
 }
-async function pickMedia(name){
-  if(!confirm(`Move ${name} from /media into the library sources/?`))return;
-  const r=await fetch(`/api/admin/media/pick?name=${encodeURIComponent(name)}`,{method:'POST'});
-  const d=await r.json();
-  document.getElementById('mediamsg').innerHTML=r.ok
-    ?`<b class="status-ok">Moved</b> → ${d.to}`:`<b class="status-bad">${d.detail||r.status}</b>`;
-  loadMedia();scanFolder();
-}
-loadFolders();loadMedia();
+init();
 </script>
 </body></html>

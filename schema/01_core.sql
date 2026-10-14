@@ -116,6 +116,7 @@ CREATE TABLE worker_state (
     id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     paused boolean NOT NULL DEFAULT false,
     current_model text,
+    gpu_json jsonb,
     updated_at timestamptz DEFAULT now()
 );
 INSERT INTO worker_state (id) VALUES (1);

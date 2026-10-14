@@ -76,7 +76,8 @@ def release_if_needed(key: str):
     if key in GPU_CACHE:
         del GPU_CACHE[key]
         try:
-            import torch
+            import gc, torch
+            gc.collect()
             torch.cuda.empty_cache()
         except Exception:
             pass
@@ -92,6 +93,25 @@ def log(conn, queue_id, stage, status, detail=None, error=None):
 def set_model(conn, name):
     conn.execute("UPDATE worker_state SET current_model=%s, updated_at=now() WHERE id=1", (name,))
 
+def report_gpu(conn):
+    """Best-effort GPU telemetry for the queue page (worker has the GPU)."""
+    try:
+        out = subprocess.run(["nvidia-smi",
+                              "--query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,power.draw",
+                              "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=8).stdout.strip()
+        if not out:
+            return
+        name, tot, used, free, util, temp, power = [x.strip() for x in out.splitlines()[0].split(",")]
+        conn.execute("""UPDATE worker_state SET gpu_json=%s, updated_at=now() WHERE id=1""",
+                     (json.dumps({"available": True, "name": name,
+                                  "total_mb": int(tot), "used_mb": int(used),
+                                  "free_mb": int(free), "util_pct": int(util),
+                                  "temp_c": int(temp),
+                                  "power_w": float(power) if power not in ("[N/A]", "") else None}),))
+    except Exception:
+        pass
+
 # ---------- stage implementations ----------
 
 def st_probe(conn, f):
@@ -103,11 +123,18 @@ def st_probe(conn, f):
     vs = next(s for s in meta["streams"] if s["codec_type"]=="video")
     num, den = (vs.get("avg_frame_rate","0/1").split("/") + ["1"])[:2]
     fps = float(num)/float(den) if float(den) else 0.0
+    # Populate the (previously always-NULL) sha256 column so the API can
+    # dedupe by content on future ingests of this file.
+    import hashlib
+    h = hashlib.sha256()
+    with open(src, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1024*1024), b""):
+            h.update(chunk)
     conn.execute("""UPDATE files SET duration_s=%s, fps=%s, width=%s, height=%s,
-                    codec=%s, size_bytes=%s WHERE file_id=%s""",
+                    codec=%s, size_bytes=%s, sha256=%s WHERE file_id=%s""",
                  (float(meta["format"]["duration"]), fps,
                   vs.get("width"), vs.get("height"), vs.get("codec_name"),
-                  int(meta["format"]["size"]), f["file_id"]))
+                  int(meta["format"]["size"]), h.hexdigest(), f["file_id"]))
 
 def st_scenedetect(conn, f):
     from scenedetect import detect, ContentDetector
@@ -172,7 +199,7 @@ def st_shotvl(conn, f):
         return proc, mdl
     proc, mdl = cached("shotvl", _load)
     src = os.path.join(LIB, f["rel_path"])
-    rows = conn.execute("SELECT shot_id, tc_in, tc_out FROM shots WHERE file_id=%s ORDER BY shot_seq",
+    rows = conn.execute("SELECT shot_id, tc_in, tc_out FROM shots WHERE file_id=%s AND camera_movement IS NULL ORDER BY shot_seq",
                         (f["file_id"],)).fetchall()
     q = ("These are consecutive frames of one movie shot. Answer as JSON: "
          "{shot_size, camera_angle, camera_movement, lens_type, lighting, composition}. "
@@ -187,12 +214,16 @@ def st_shotvl(conn, f):
         frames = sorted(glob.glob(os.path.join(tmpdir,"*.jpg")))
         if not frames:
             shutil.rmtree(tmpdir, ignore_errors=True); continue
+        if len(frames) > 16:
+            step = len(frames) / 16.0
+            frames = [frames[int(i * step)] for i in range(16)]
         content = [{"type":"image","image":f"file://{fp}"} for fp in frames]
         content.append({"type":"text","text":q})
         msgs = [{"role":"user","content":content}]
         text = proc.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-        inputs = proc(text=[text], images=frames, return_tensors="pt").to("cuda")
-        out = mdl.generate(**inputs, max_new_tokens=256)
+        with torch.inference_mode():
+            inputs = proc(text=[text], images=frames, return_tensors="pt").to("cuda")
+            out = mdl.generate(**inputs, max_new_tokens=150)
         ans = proc.batch_decode(out[:, inputs.input_ids.shape[1]:],
                                 skip_special_tokens=True)[0]
         try:
@@ -207,6 +238,12 @@ def st_shotvl(conn, f):
             log(conn, f["queue_id"], "shotvl", "failed", f"parse shot {sid}")
         shutil.rmtree(tmpdir, ignore_errors=True)
     release_if_needed("shotvl")
+    # Stage-done honesty: if every shot failed to parse, fail the stage so a
+    # retry recomputes it (previously the stage logged 'done' regardless).
+    tagged = conn.execute("SELECT count(*) FROM shots WHERE file_id=%s AND camera_movement IS NOT NULL",
+                          (f["file_id"],)).fetchone()["count"]
+    if tagged == 0:
+        raise RuntimeError(f"shotvl produced no parseable tags for any shots")
 
 def st_vlm(conn, f):
     """Description/mood/objects via in-process Qwen2.5-VL (4-bit), keyframe only."""
@@ -226,7 +263,7 @@ def st_vlm(conn, f):
             CFG["models"]["vlm"], **kwargs)
         return proc, mdl
     proc, mdl = cached("vlm", _load)
-    rows = conn.execute("SELECT shot_id, thumb_path FROM shots WHERE file_id=%s ORDER BY shot_seq",
+    rows = conn.execute("SELECT shot_id, thumb_path FROM shots WHERE file_id=%s AND description IS NULL ORDER BY shot_seq",
                         (f["file_id"],)).fetchall()
     q = ("Describe this film frame for an editor's search database. JSON: "
          "{description (one sentence), mood, color_scheme, objects (array of "
@@ -240,8 +277,9 @@ def st_vlm(conn, f):
             {"type":"image","image":f"file://{imgpath}"},
             {"type":"text","text":q}]}]
         text = proc.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-        inputs = proc(text=[text], images=[imgpath], return_tensors="pt").to("cuda")
-        out = mdl.generate(**inputs, max_new_tokens=400)
+        with torch.inference_mode():
+            inputs = proc(text=[text], images=[imgpath], return_tensors="pt").to("cuda")
+            out = mdl.generate(**inputs, max_new_tokens=150)
         ans = proc.batch_decode(out[:, inputs.input_ids.shape[1]:],
                                 skip_special_tokens=True)[0]
         try:
@@ -254,6 +292,11 @@ def st_vlm(conn, f):
         except (json.JSONDecodeError, ValueError):
             log(conn, f["queue_id"], "vlm", "failed", f"parse shot {sid}")
     release_if_needed("vlm")
+    # Same honesty rule as shotvl: zero descriptions written = stage failure.
+    described = conn.execute("SELECT count(*) FROM shots WHERE file_id=%s AND description IS NOT NULL",
+                             (f["file_id"],)).fetchone()["count"]
+    if described == 0:
+        raise RuntimeError(f"vlm produced no descriptions for any shots")
 
 def st_clap(conn, f):
     import torch, torchaudio, tempfile, subprocess as sp
@@ -326,30 +369,68 @@ def st_narrative(conn, f):
              f"| {(r['description'] or '')[:80]} | {(r['dlg'] or '')[:80]}" for r in rows]
     labels = [r["label"] for r in conn.execute(
         "SELECT label FROM taxonomy WHERE axis='scene_function'").fetchall()]
-    prompt = ("Segment this film timeline into scenes. Output ONLY a JSON array; "
-              "each item {start_tc, end_tc, narrative_label (one of: " + ", ".join(labels) +
-              "), sequence_type, summary (one sentence)}.\n\n" + "\n".join(lines))
-    msgs = [{"role":"user","content":prompt}]
-    text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
-    inputs = tok(text, return_tensors="pt").to("cuda")
-    out = mdl.generate(**inputs, max_new_tokens=4000)
-    content = tok.decode(out[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
-    for sc in json.loads(content[content.find("["):content.rfind("]")+1]):
-        conn.execute("""INSERT INTO scenes (file_id, tc_in, tc_out, narrative_label,
-                        sequence_type, summary, source) VALUES (%s,%s,%s,%s,%s,%s,'llm')""",
-                     (f["file_id"], _parse_tc(sc["start_tc"]), _parse_tc(sc["end_tc"]),
-                      sc.get("narrative_label"), sc.get("sequence_type"), sc.get("summary")))
+    chunk_size = 200
+    scenes_parsed, scenes_inserted = 0, 0
+    for chunk_idx in range(0, max(1, len(lines)), chunk_size):
+        chunk_lines = lines[chunk_idx:chunk_idx + chunk_size]
+        if not chunk_lines:
+            break
+        prompt = ("Segment this portion of the film timeline into scenes. Output ONLY a JSON array; "
+                  "each item {start_tc, end_tc, narrative_label (one of: " + ", ".join(labels) +
+                  "), sequence_type, summary (one sentence)}.\n\n" + "\n".join(chunk_lines))
+        msgs = [{"role":"user","content":prompt}]
+        text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        with torch.inference_mode():
+            inputs = tok(text, return_tensors="pt").to("cuda")
+            out = mdl.generate(**inputs, max_new_tokens=2048)
+        content = tok.decode(out[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
+        blob = content[content.find("["):content.rfind("]")+1]
+        try:
+            scene_list = json.loads(blob)
+        except json.JSONDecodeError:
+            scene_list, dec, idx = [], json.JSONDecoder(), content.find("[") + 1
+            while idx < len(content):
+                try:
+                    obj, end = dec.raw_decode(content, idx)
+                    scene_list.append(obj); idx = end
+                except json.JSONDecodeError:
+                    nxt = content.find("{", idx + 1)
+                    if nxt == -1: break
+                    idx = nxt
+            log(conn, f["queue_id"], "narrative", "done",
+                f"chunk {chunk_idx//chunk_size + 1} salvaged {len(scene_list)} scene objects")
+        for sc in scene_list:
+            scenes_parsed += 1
+            try:
+                conn.execute("""INSERT INTO scenes (file_id, tc_in, tc_out, narrative_label,
+                                sequence_type, summary, source) VALUES (%s,%s,%s,%s,%s,%s,'llm')""",
+                             (f["file_id"], _parse_tc(sc["start_tc"]), _parse_tc(sc["end_tc"]),
+                              sc.get("narrative_label"), sc.get("sequence_type"), sc.get("summary")))
+                scenes_inserted += 1
+            except (KeyError, ValueError) as e:
+                log(conn, f["queue_id"], "narrative", "failed",
+                    f"bad scene object skipped: {e}")
     release_if_needed("narrative")
+    if scenes_parsed and not scenes_inserted:
+        raise RuntimeError(f"narrative: {scenes_parsed} scenes parsed, none insertable")
 
 def st_proxy(conn, f):
     src = os.path.join(LIB, f["rel_path"])
     outdir = os.path.join(CFG["derived_root"], "proxies")
     os.makedirs(outdir, exist_ok=True)
-    subprocess.run(["ffmpeg","-y","-v","error","-i",src,
-        "-vf",f"scale=-2:{CFG['proxy_height']}","-c:v","libx264","-preset","fast",
-        "-crf","28","-c:a","aac","-b:a","96k",
-        "-hls_time","4","-hls_playlist_type","vod",
-        os.path.join(outdir, f"{f['file_id']}.m3u8")], check=True)
+    # GPU-resident box: prefer NVENC (3060 sits idle here otherwise); fall back
+    # to libx264 if the ffmpeg build lacks nvenc.
+    base = ["ffmpeg","-y","-v","error","-i",src,
+            "-vf",f"scale=-2:{CFG['proxy_height']}"]
+    tail = ["-c:a","aac","-b:a","96k","-hls_time","4","-hls_playlist_type","vod",
+            os.path.join(outdir, f"{f['file_id']}.m3u8")]
+    r = subprocess.run(base + ["-c:v","h264_nvenc","-preset","p4","-cq","30"] + tail,
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        log(conn, f["queue_id"], "proxy", "started",
+            "nvenc unavailable/failed — falling back to libx264")
+        subprocess.run(base + ["-c:v","libx264","-preset","fast","-crf","28"] + tail,
+                       check=True)
     subprocess.run(["ffmpeg","-y","-v","error","-i",src,"-filter_complex",
         "showwavespic=s=2000x200:split_channels=0","-frames:v","1",
         os.path.join(CFG["derived_root"], "waveforms", f"{f['file_id']}.png")],
@@ -410,6 +491,7 @@ def run():
                 LIMIT 1""").fetchone()
             if not job:
                 set_model(conn, f"idle [{','.join(resident)}]" if resident else None)
+                report_gpu(conn)
                 time.sleep(5); continue
             f = dict(job)
             conn.execute("UPDATE ingest_queue SET status='active' WHERE queue_id=%s",
@@ -422,6 +504,7 @@ def run():
                 for stage in STAGES:
                     if stage in done: continue
                     log(conn, f["queue_id"], stage, "started")
+                    report_gpu(conn)
                     STAGE_FNS[stage](conn, f)
                     log(conn, f["queue_id"], stage, "done")
                 conn.execute("UPDATE ingest_queue SET status='done' WHERE queue_id=%s",

@@ -1,7 +1,7 @@
 {
   "tier": "tier_full",
-  "library_root": "/library",
-  "derived_root": "/library/derived",
+  "library_root": "/media",
+  "derived_root": "/media/derived",
   "proxy_height": 360,
   "shotvl_num_frames": 12
 }

@@ -1,220 +1,680 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CineSearch — Admin Console</title>
+<title>CineSearch — Pipeline & Queue</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-:root{--v:#8b3dff;--violet:#a060ff;--pink:#ff4ec8;--bg:#0a0514;--surface:#120a20;--line:#2a1a38;--fg:#f3e8ff;--fg-dim:#b08dc8;--bad:#ff5c8a;--ok:#5ad18a}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0b0714;--surface:#130c1f;--surface2:#1a1128;--line:#261839;
+  --fg:#ede6f7;--fgdim:#9a86b8;--accent:#8b3dff;--accent2:#ff4ec8;
+  --ok:#4ecf8a;--warn:#e8b74a;--bad:#ff5c7a;--mono:ui-monospace,'JetBrains Mono',monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,#0a0514 0%,#14082a 60%,#120a20 100%);min-height:100vh;color:var(--fg);font:14px/1.6 Inter,system-ui,sans-serif;padding:24px 20px}
-h1{font-size:26px;font-weight:800;color:var(--pink);letter-spacing:-.03em;text-shadow:0 0 30px rgba(255,78,200,.35);margin:0 0 4px}
-.sub{color:var(--fg-dim);font-size:12px;margin-bottom:22px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:18px;max-width:1400px;margin:auto}
-.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(6px)}
-.card h2{color:var(--violet);font-size:15px;margin:0 0 14px;font-weight:700}
-.card h2::before{content:'';display:inline-block;width:8px;height:8px;background:var(--pink);border-radius:50%;margin-right:10px;box-shadow:0 0 10px var(--pink);vertical-align:middle}
-button{cursor:pointer;border:0;border-radius:10px;padding:9px 16px;font:600 13px Inter,sans-serif;background:linear-gradient(135deg,#8b3dff,#ff4ec8);color:#fff;box-shadow:0 4px 20px rgba(139,61,255,.35);transition:.15s}
-button:hover{box-shadow:0 6px 30px rgba(255,78,200,.5);transform:translateY(-1px)}
-button.ghost{background:transparent;color:var(--violet);border:1px solid #3a2055;box-shadow:none}
-button.ghost:hover{border-color:var(--pink);color:var(--pink)}
-button.tiny{padding:3px 10px;font-size:11px;border-radius:8px}
-input,select{background:#0f0518;border:1px solid #3a2055;color:#fff;border-radius:10px;padding:8px 10px;font:inherit}
-input:focus,select:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,78,200,.15)}
-label{font-size:11px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:4px;display:block}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-code{font-family:ui-monospace,monospace;font-size:12px;color:var(--pink);background:#1a0828;padding:2px 6px;border-radius:4px}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{color:var(--fg-dim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
-td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
-.st-done{color:var(--ok)}.st-failed{color:var(--bad)}.st-active{color:var(--violet)}
-.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:rgba(139,61,255,.15);color:var(--violet);border:1px solid rgba(139,61,255,.35)}
-.badge.warn{background:rgba(255,92,138,.12);color:var(--bad);border-color:rgba(255,92,138,.35)}
-.stat{font-weight:800;font-size:22px;letter-spacing:-.02em}
-.stat-sub{font-size:11px;color:var(--fg-dim);margin-top:2px}
-pre{white-space:pre-wrap;color:var(--bad);font-size:11px;margin:4px 0}
-.pill{display:inline-block;background:rgba(160,96,255,.12);border:1px solid rgba(160,96,255,.3);color:var(--violet);border-radius:20px;padding:2px 9px;font-size:11px;margin:2px 4px 2px 0}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 Inter,system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{height:48px;min-height:48px;display:flex;align-items:center;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--surface);z-index:20}
+.wordmark{font-size:13px;font-weight:700;letter-spacing:.18em}
+nav{display:flex;gap:4px}
+nav a{color:var(--fgdim);text-decoration:none;font-size:13px;padding:4px 10px;border-bottom:2px solid transparent}
+nav a.on{color:var(--fg);border-bottom-color:var(--accent2)}
+#worker-pill{margin-left:auto;font-size:12px;color:var(--fgdim);display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--ok)}
+.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.idle{background:var(--fgdim)}
+
+/* 3-Column Workstation Layout */
+#app-layout{flex:1;display:flex;height:calc(100vh - 48px);overflow-x:auto;overflow-y:hidden}
+
+/* Left Panel: Pipeline Journey & Steps */
+#panel-left{width:360px;min-width:340px;height:100%;overflow-y:auto;border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column}
+.panel-header{padding:16px 18px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:10}
+.panel-header h2{font-size:13px;font-weight:600;margin:0;letter-spacing:.02em}
+.pipeline-journey{padding:18px 16px;position:relative}
+.journey-track{position:absolute;left:29px;top:28px;bottom:28px;width:2px;background:var(--line);z-index:1}
+
+.step-card{position:relative;z-index:2;display:flex;gap:14px;margin-bottom:16px;padding:12px 14px;background:var(--surface2);border:1px solid var(--line);border-radius:6px;transition:border-color .15s,box-shadow .15s}
+.step-card.active{border-color:var(--accent2);box-shadow:0 0 16px rgba(255,78,200,.18);background:linear-gradient(135deg,rgba(139,61,255,.08),rgba(255,78,200,.05))}
+.step-card.done{border-color:rgba(78,207,138,.35)}
+
+.node{width:26px;height:26px;border-radius:50%;background:var(--surface2);border:2px solid var(--line);color:var(--fgdim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .2s}
+.step-card.active .node{border-color:var(--accent2);color:#fff;background:var(--accent2);box-shadow:0 0 10px var(--accent2);animation:nodePulse 1.4s infinite}
+.step-card.done .node{border-color:var(--ok);background:var(--ok);color:#0b0714}
+@keyframes nodePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+
+.step-info{flex:1;min-width:0}
+.step-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.step-name{font-weight:600;font-size:12.5px;color:var(--fg)}
+.step-card.active .step-name{color:var(--accent2)}
+.step-tag{font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--fgdim)}
+.step-card.done .step-tag{background:rgba(78,207,138,.12);color:var(--ok)}
+.step-card.active .step-tag{background:rgba(255,78,200,.2);color:var(--accent2);font-weight:600}
+
+.step-desc{font-size:11px;color:var(--fgdim);line-height:1.45;margin-bottom:6px}
+.step-model-box{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
+.step-model-box select{width:100%;font-size:11px;padding:4px 6px;height:26px;background:var(--surface);border-color:var(--line);border-radius:4px}
+.step-progress-box{margin-top:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--accent);border-radius:4px;font-size:11px}
+.step-progress-box .bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:5px}
+.step-progress-box .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+
+/* Center Panel: Status, GPU, and Jobs Queue */
+#panel-center{flex:1;min-width:580px;height:100%;overflow-y:auto;padding:20px;background:var(--bg)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+.tile .n{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.tile .l{font-size:10.5px;color:var(--fgdim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.tile .sub{font-size:10.5px;color:var(--fgdim);margin-top:4px}
+.tile.bad .n{color:var(--bad);cursor:pointer}
+
+section.box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:16px}
+section.box h2{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--fg);display:flex;align-items:center;justify-content:space-between}
+
+/* GPU Grid */
+#gpugrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;font-size:12px}
+#gpugrid > div{background:var(--surface2);padding:8px 12px;border-radius:5px;border:1px solid var(--line);min-width:0}
+#gpugrid .dim{font-size:10.5px;color:var(--fgdim);text-transform:uppercase;letter-spacing:.05em}
+#gpugrid .val{font-family:var(--mono);font-size:12.5px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Jobs Table - Rock-Solid Fixed Layout */
+.table-wrap{width:100%;overflow-x:auto}
+table.fixed-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+table.fixed-table th{color:var(--fgdim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.06em;white-space:nowrap}
+table.fixed-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:var(--mono);font-size:12px}
+.dim{color:var(--fgdim);font-size:11px}
+.segs{display:inline-flex;gap:2px;vertical-align:middle}
+.seg{width:13px;height:7px;border-radius:2px;background:var(--surface2);border:1px solid var(--line)}
+.seg.done{background:var(--ok);border-color:var(--ok)}
+.seg.failed{background:var(--bad);border-color:var(--bad)}
+.seg.active{background:var(--accent2);border-color:var(--accent2);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+
+tr.jobrow{cursor:pointer}
+tr.jobrow:hover td{background:var(--surface2)}
+tr.evrow td{background:var(--surface2);padding:14px;overflow:visible !important;white-space:normal !important}
+
+/* Right Panel: Full Height Library */
+#panel-right{width:360px;min-width:330px;height:100%;overflow-y:auto;border-left:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column}
+.lib-list{padding:14px;display:flex;flex-direction:column;gap:10px}
+.lib-card{background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:12px 14px;transition:border-color .15s}
+.lib-card:hover{border-color:var(--accent)}
+.lib-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.lib-code{font-weight:700;font-family:var(--mono);color:var(--accent2);font-size:12.5px}
+.lib-cat{font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid var(--accent);color:var(--accent)}
+.lib-path{font-family:var(--mono);font-size:11px;color:var(--fgdim);margin-bottom:8px;word-break:break-all}
+.lib-meta{display:flex;gap:10px;font-size:11px;color:var(--fgdim);margin-bottom:10px}
+.lib-actions{display:flex;gap:6px;align-items:center}
+
+button{cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:6px 12px;font:600 12px Inter;background:var(--surface2);color:var(--fg);transition:border-color .12s}
+button:hover{border-color:var(--accent)}
+button.primary{background:linear-gradient(135deg,#8b3dff,#ff4ec8);border:0;color:#fff}
+button.tiny{padding:3px 8px;font-size:11px}
+button.armed{border-color:var(--bad);color:var(--bad)}
+input,select{background:var(--surface2);border:1px solid var(--line);color:var(--fg);border-radius:4px;padding:6px 8px;font:inherit}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+#toast{position:fixed;top:58px;right:18px;z-index:99;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px;padding:10px 14px;font-size:12px;max-width:340px}
+.toast.bad{border-left-color:var(--bad)}
 </style></head><body>
-<h1>CineSearch <span style="font-weight:300;font-size:14px;color:var(--fg-dim);letter-spacing:.2em">ADMIN</span> <a href="ingest.html" style="font-size:11px;color:var(--pink);margin-left:12px;text-decoration:none;border:1px solid var(--pink);padding:3px 10px;border-radius:20px;float:right">Ingest →</a></h1>
-<div class="sub">Cinematic search database · 192.168.1.35 · admin console</div>
 
-<div class="grid">
+<header>
+  <span class="wordmark">CINESEARCH</span>
+  <nav>
+    <a href="/">Search</a>
+    <a href="/admin/" class="on">Queue & Pipeline</a>
+    <a href="/admin/ingest.html">Ingest</a>
+  </nav>
+  <span id="worker-pill"><span class="dot idle"></span><span id="wtext">…</span></span>
+</header>
 
-  <div class="card">
-    <h2>Overview</h2>
-    <div class="row" style="gap:22px;margin-top:6px">
-      <div><div class="stat" id="stat-files">—</div><div class="stat-sub">Files</div></div>
-      <div><div class="stat" id="stat-shots">—</div><div class="stat-sub">Shots</div></div>
-      <div><div class="stat" id="stat-utter">—</div><div class="stat-sub">Utterances</div></div>
-      <div><div class="stat" id="stat-scenes">—</div><div class="stat-sub">Scenes</div></div>
-      <div><div class="stat" id="stat-queue">—</div><div class="stat-sub">Pending</div></div>
-      <div><div class="stat" id="stat-failed" style="color:var(--bad)">—</div><div class="stat-sub">Failed</div></div>
+<div id="app-layout">
+
+  <!-- LEFT: Full Height Pipeline Journey & Model Choosers -->
+  <aside id="panel-left">
+    <div class="panel-header">
+      <h2>Pipeline Journey</h2>
+      <span class="dim" style="font-size:11px">10 Automated Stages</span>
     </div>
-    <div id="stat-extra" style="margin-top:12px"></div>
-    <div id="stat-top" style="margin-top:6px"></div>
-  </div>
 
-  <div class="card">
-    <h2>Worker</h2>
-    <div id="wstate">Loading…</div>
-    <div class="row" style="margin-top:10px">
-      <button onclick="pauseWorker(true)">Pause</button>
-      <button onclick="pauseWorker(false)">Resume</button>
-      <button class="ghost" onclick="pollAll()">Refresh</button>
+    <div class="pipeline-journey">
+      <div class="journey-track"></div>
+
+      <!-- Step 1: Probe -->
+      <div class="step-card" id="sc-probe">
+        <div class="node">1</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Probe</span><span class="step-tag" id="stg-probe">wait</span></div>
+          <div class="step-desc">Fast ffprobe metadata extraction, video stream FPS/dimensions, and content SHA-256 hash.</div>
+        </div>
+      </div>
+
+      <!-- Step 2: SceneDetect -->
+      <div class="step-card" id="sc-scenedetect">
+        <div class="node">2</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">SceneDetect</span><span class="step-tag" id="stg-scenedetect">wait</span></div>
+          <div class="step-desc">PySceneDetect visual cut boundary analysis and individual shot keyframe thumbnail extraction.</div>
+          <div class="step-progress-box" id="prog-scenedetect" style="display:none">
+            <span id="txt-scenedetect">Analyzing visual cuts…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Whisper -->
+      <div class="step-card" id="sc-whisper">
+        <div class="node">3</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Speech to Text</span><span class="step-tag" id="stg-whisper">wait</span></div>
+          <div class="step-desc">High-precision speech transcription with word-level timestamps via Faster-Whisper.</div>
+          <div class="step-model-box">
+            <div class="dim" style="margin-bottom:3px">Model Chooser</div>
+            <select id="m-whisper" onchange="updateModel('whisper',this.value)">
+              <option value="large-v3">faster-whisper large-v3 (Default)</option>
+              <option value="medium">faster-whisper medium</option>
+              <option value="small">faster-whisper small</option>
+            </select>
+          </div>
+          <div class="step-progress-box" id="prog-whisper" style="display:none">
+            <span id="txt-whisper">Transcribing dialogue…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: ShotVL -->
+      <div class="step-card" id="sc-shotvl">
+        <div class="node">4</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">ShotVL Classifier</span><span class="step-tag" id="stg-shotvl">wait</span></div>
+          <div class="step-desc">Temporal vision-language model analyzing multi-frame camera movement, shot size, composition & lighting.</div>
+          <div class="step-progress-box" id="prog-shotvl" style="display:none">
+            <div id="txt-shotvl" style="font-weight:600">Processing shots…</div>
+            <div class="bar"><div class="bar-fill" id="bar-shotvl" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: VLM -->
+      <div class="step-card" id="sc-vlm">
+        <div class="node">5</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Vision-Language Model</span><span class="step-tag" id="stg-vlm">wait</span></div>
+          <div class="step-desc">Qwen2.5-VL generating cinematic shot descriptions, mood tagging, color schemes, and narrative roles.</div>
+          <div class="step-model-box">
+            <div class="dim" style="margin-bottom:3px">Model Chooser</div>
+            <select id="m-vlm" onchange="updateModel('vlm',this.value)">
+              <option value="unsloth/Qwen2.5-VL-7B-Instruct-bnb-4bit">Qwen2.5-VL-7B (4-bit, High Quality)</option>
+              <option value="Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5-VL-3B (Balanced)</option>
+            </select>
+          </div>
+          <div class="step-progress-box" id="prog-vlm" style="display:none">
+            <div id="txt-vlm" style="font-weight:600">Describing shots…</div>
+            <div class="bar"><div class="bar-fill" id="bar-vlm" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6: CLAP -->
+      <div class="step-card" id="sc-clap">
+        <div class="node">6</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Acoustic Embeddings</span><span class="step-tag" id="stg-clap">wait</span></div>
+          <div class="step-desc">LAION CLAP acoustic neural embeddings for sound effects, foley, and music retrieval.</div>
+        </div>
+      </div>
+
+      <!-- Step 7: Embed -->
+      <div class="step-card" id="sc-embed">
+        <div class="node">7</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Text Semantic Embed</span><span class="step-tag" id="stg-embed">wait</span></div>
+          <div class="step-desc">BAAI BGE-M3 dense multilingual vector embeddings over shot descriptions and dialogue.</div>
+        </div>
+      </div>
+
+      <!-- Step 8: Narrative -->
+      <div class="step-card" id="sc-narrative">
+        <div class="node">8</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Narrative LLM</span><span class="step-tag" id="stg-narrative">wait</span></div>
+          <div class="step-desc">Qwen2.5-7B causal LLM segmenting the global timeline into dramatic scenes and summary beats.</div>
+          <div class="step-model-box">
+            <div class="dim" style="margin-bottom:3px">Model Chooser</div>
+            <select id="m-narrative" onchange="updateModel('narrative',this.value)">
+              <option value="unsloth/Qwen2.5-7B-Instruct-bnb-4bit">Qwen2.5-7B (4-bit, Canonical)</option>
+              <option value="Qwen/Qwen2.5-3B-Instruct">Qwen2.5-3B (Fast)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 9: Proxy -->
+      <div class="step-card" id="sc-proxy">
+        <div class="node">9</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">HLS Proxy &amp; Waveform</span><span class="step-tag" id="stg-proxy">wait</span></div>
+          <div class="step-desc">Hardware NVENC H.264 360p web streaming transcode and full-duration visual PNG waveform.</div>
+        </div>
+      </div>
+
+      <!-- Step 10: Joins -->
+      <div class="step-card" id="sc-joins">
+        <div class="node">10</div>
+        <div class="step-info">
+          <div class="step-top"><span class="step-name">Relational Joins</span><span class="step-tag" id="stg-joins">wait</span></div>
+          <div class="step-desc">PostgreSQL timecode cross-indexing binding shots, utterances, and scenes into the unified index.</div>
+        </div>
+      </div>
+
     </div>
-    <div id="gpuinfo" style="margin-top:10px;font-size:12px;color:var(--fg-dim)"></div>
-  </div>
+  </aside>
 
-  <div class="card">
-    <h2>Model tier</h2>
-    <select id="mtier" onchange="setTier(this.value)" style="width:100%"></select>
-    <div style="margin-top:8px;font-size:12px;color:var(--fg-dim)" id="mtmsg"></div>
-  </div>
-
-  <div class="card">
-    <h2>Simultaneous model residency</h2>
-    <select id="residency" onchange="setResidency(this.value)" style="width:100%"></select>
-    <div id="resmsg" style="margin-top:8px;font-size:12px;color:var(--fg-dim)"></div>
-    <div style="margin-top:8px;font-size:11px;color:var(--fg-dim)">Profiles above 12&nbsp;GB need a bigger GPU; the worker refuses to start a stage whose residency estimate exceeds detected VRAM. Applies on the next queued job.</div>
-  </div>
-
-  <div class="card" style="grid-column:span 2">
-    <h2>Ingest queue <span class="badge">live · 5s</span></h2>
-    <table><thead><tr><th>#</th><th>File code</th><th>Prio</th><th>Status</th><th>Stages</th><th></th></tr></thead><tbody id="qbody"></tbody></table>
-  </div>
-
-  <div class="card" style="grid-column:span 2">
-    <h2>Library</h2>
-    <div class="row" style="margin-bottom:10px">
-      <input id="libfilter" placeholder="Filter codes / paths…" style="flex:1" oninput="renderLibrary(this.value)">
-      <button class="ghost" onclick="pollLibrary()">Refresh</button>
+  <!-- CENTER: Telemetry & Jobs Queue -->
+  <main id="panel-center">
+    <!-- Status Tiles -->
+    <div class="strip">
+      <div class="tile"><div class="n" id="s-files">—</div><div class="l">Files</div><div class="sub" id="s-vol"></div></div>
+      <div class="tile"><div class="n" id="s-shots">—</div><div class="l">Shots</div><div class="sub" id="s-utts"></div></div>
+      <div class="tile"><div class="n" id="s-queue">—</div><div class="l">Queue Active</div><div class="sub" id="s-gpu"></div></div>
+      <div class="tile bad" id="tile-failed" onclick="filterJobs('failed')"><div class="n" id="s-failed">0</div><div class="l">Failed</div><div class="sub">click to filter</div></div>
     </div>
-    <table><thead><tr><th>Code</th><th>Path</th><th>Status</th><th>Duration</th><th>Size</th><th>Shots</th><th>Utterances</th><th></th></tr></thead><tbody id="libbody"></tbody></table>
-  </div>
 
-  <div class="card" style="grid-column:span 2">
-    <h2>ID schemes</h2>
-    <table><thead><tr><th>Name</th><th>Prefix</th><th>Pad</th><th>Next #</th><th>Rename on ingest</th><th>Default</th><th></th></tr></thead><tbody id="schbody"></tbody></table>
-    <div class="row" style="margin-top:10px">
-      <input id="sname" placeholder="new scheme name" style="flex:1;min-width:120px">
-      <input id="sprefix" placeholder="prefix" value="SPOT" style="width:90px">
-      <button class="tiny ghost" onclick="addScheme()">Add scheme</button>
+    <!-- GPU Telemetry Panel -->
+    <section class="box" id="gpupanel">
+      <h2><span>GPU Telemetry <span class="dim" id="gpuname">—</span></span> <span class="dim" style="font-size:10.5px">Polled every 1s</span></h2>
+      <div id="gpugrid">
+        <div>
+          <div class="dim">VRAM Usage</div>
+          <div class="val" id="g-vram">—</div>
+          <div style="height:3px;background:var(--surface);border-radius:2px;margin-top:5px;overflow:hidden">
+            <div id="g-vrambar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s"></div>
+          </div>
+        </div>
+        <div><div class="dim">Core Utilization</div><div class="val" id="g-util" style="color:var(--ok)">—</div></div>
+        <div><div class="dim">Power Draw</div><div class="val" id="g-power">—</div></div>
+        <div><div class="dim">Temperature</div><div class="val" id="g-temp">—</div></div>
+        <div><div class="dim">Active Model</div><div class="val" id="g-model" style="color:var(--accent2)">—</div></div>
+      </div>
+    </section>
+
+    <!-- Jobs Queue Panel -->
+    <section class="box">
+      <h2>
+        <span>Jobs Queue <span class="dim">live 1s</span></span>
+        <div class="row" style="margin:0">
+          <button class="tiny" onclick="pause(true)">Pause</button>
+          <button class="tiny" onclick="pause(false)">Resume</button>
+          <select id="jobfilter" onchange="renderJobs()" style="height:26px;font-size:11px">
+            <option value="">all</option><option>active</option><option>pending</option><option>failed</option><option>done</option>
+          </select>
+        </div>
+      </h2>
+
+      <div class="table-wrap">
+        <table class="fixed-table">
+          <colgroup>
+            <col style="width:40px">
+            <col style="width:105px">
+            <col style="width:160px">
+            <col style="width:115px">
+            <col style="width:45px">
+            <col style="width:150px">
+            <col style="width:85px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Code</th>
+              <th>Status</th>
+              <th>ETA</th>
+              <th>Prio</th>
+              <th>Stages (1→10)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="qbody">
+            <tr><td colspan="7" class="empty">Loading queue…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- RIGHT: Full Height Library Panel -->
+  <aside id="panel-right">
+    <div class="panel-header">
+      <h2>Media Library</h2>
+      <button class="tiny" onclick="pollLibrary()">↻ Refresh</button>
     </div>
-  </div>
+    <div style="padding:12px 14px;border-bottom:1px solid var(--line);background:var(--surface)">
+      <input id="libfilter" placeholder="Filter library codes/paths…" style="width:100%;font-size:11.5px" oninput="renderLibrary()">
+    </div>
+    <div class="lib-list" id="liblist">
+      <div class="empty">Loading library…</div>
+    </div>
+  </aside>
 
 </div>
 
-<script>
-const tiers=[
-  {v:'tier_full',l:'Full — Qwen7B-VL + ShotVL3B + whisper-large-v3 (12GB)'},
-  {v:'tier_balanced',l:'Balanced — Qwen3B-VL + whisper-medium (8GB)'},
-  {v:'tier_minimal',l:'Minimal — Qwen3B-VL + whisper-small (6GB)'}];
-let libfiles=[];
+<div id="toast"></div>
 
+<script>
+const STAGES=["probe","scenedetect","whisper","shotvl","vlm","clap","embed","narrative","proxy","joins"];
+let jobs=[],expanded=new Set(),lastGpu={},currentWorkerModel='',libfiles=[];
+
+function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=m;document.getElementById('toast').appendChild(t);setTimeout(()=>t.remove(),4000);}
+async function api(path,opt){const r=await fetch(path,opt);if(!r.ok){let d;try{d=(await r.json()).detail}catch(e){d=r.status}throw new Error(typeof d==='string'?d:JSON.stringify(d));}return r.json();}
 function esc(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmtDur(s){if(s==null)return'—';s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return(h?h+'h ':'')+m+'m'}
 function fmtSize(b){if(b==null)return'—';if(b>1e9)return(b/1e9).toFixed(1)+' GB';if(b>1e6)return(b/1e6).toFixed(0)+' MB';return(b/1e3).toFixed(0)+' KB'}
 
-async function pollAll(){
+/* Poll Queue (every 1s) */
+async function poll(){
   try{
-    const d=await(await fetch('/api/admin/queue')).json();
-    document.getElementById('wstate').innerHTML =
-      `<span class="badge${d.worker.paused?' warn':''}">${d.worker.paused?'PAUSED':'RUNNING'}</span> `+
-      (d.worker.model?`GPU: <code>${esc(d.worker.model)}</code>`:'GPU idle');
-    document.getElementById('qbody').innerHTML = d.queue.length?d.queue.map(j=>{
-      const stages=(j.events||[]).map(e=>
-        `<span class="st-${e.status==='done'?'done':e.status==='failed'?'failed':'active'}">${esc(e.stage)}:${e.status}</span>`).join(' ');
-      const err=(j.events||[]).filter(e=>e.err).map(e=>`<pre>${esc(e.err.slice(-300))}</pre>`).join('');
-      return `<tr><td>${j.queue_id}</td><td><code>${esc(j.code)}</code></td><td>${j.priority}</td>
-        <td class="st-${j.status==='done'?'done':j.status==='failed'?'failed':'active'}">${j.status}</td>
-        <td>${stages||'<span style="color:var(--fg-dim)">none</span>'}${err}</td>
-        <td>${j.status==='failed'?`<button class="tiny" onclick="retry(${j.queue_id})">Retry</button>`:''}</td></tr>`;
-    }).join(''):'<tr><td colspan="6" style="color:var(--fg-dim)">Queue empty.</td></tr>';
-  }catch(e){document.getElementById('wstate').innerHTML='<span class="badge warn">API unreachable</span>'}
+    const d=await api('/api/admin/queue');
+    jobs=d.queue;
+    currentWorkerModel=d.worker.model||'';
+    const dot=document.querySelector('#worker-pill .dot'),txt=document.getElementById('wtext');
+    if(d.worker.paused){dot.className='dot warn';txt.textContent='worker paused';}
+    else if(d.worker.model){dot.className='dot';txt.textContent=d.worker.model;}
+    else{dot.className='dot idle';txt.textContent='worker idle';}
+    renderJobs();
+    updatePipelineJourney();
+  }catch(e){
+    document.querySelector('#worker-pill .dot').className='dot bad';
+    document.getElementById('wtext').textContent='api unreachable';
+  }
 }
 
+/* Render Jobs Table */
+function renderJobs(){
+  const f=document.getElementById('jobfilter').value;
+  const rows=jobs.filter(j=>!f||j.status===f);
+  const tb=document.getElementById('qbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty">'+(f?'No '+f+' jobs.':'Queue empty — submit files from Ingest.')+'</td></tr>';return;}
+
+  const scrollMap={};
+  document.querySelectorAll('.ev-scroll').forEach(el=>{scrollMap[el.dataset.qid]=el.scrollTop;});
+
+  tb.innerHTML=rows.map(j=>{
+    const st=j.events||[];
+    const byStage={};
+    st.forEach(e=>{
+      if(e.status==='failed' && e.detail && e.detail.startsWith('parse shot')) return;
+      byStage[e.stage]=e.status;
+    });
+    let activeStage=null;
+    if(j.status==='active'){
+      const wm=(currentWorkerModel||'').split(/[\s(]/)[0];
+      if(STAGES.includes(wm)){
+        activeStage=wm;
+      }else{
+        const lastStarted=[...st].reverse().find(e=>e.status==='started');
+        activeStage=lastStarted?lastStarted.stage:null;
+      }
+    }
+    const curStage=activeStage||([...st].reverse().find(e=>e.status==='done')||{}).stage||'—';
+    const doneN=Object.values(byStage).filter(s=>s==='done').length;
+    const segs=STAGES.map(s=>{
+      const cls=byStage[s]==='done'?'done':byStage[s]==='failed'?'failed':(s===activeStage?'active':'');
+      return `<span class="seg ${cls}" title="${s}${byStage[s]?': '+byStage[s]:''}"></span>`;
+    }).join('');
+    const dotC=j.status==='failed'?'bad':j.status==='active'?'':'idle';
+    const open=expanded.has(j.queue_id);
+
+    let etaHtml='<span class="dim">—</span>';
+    if(j.status==='done') etaHtml='<span style="color:var(--ok)">Done</span>';
+    else if(j.status==='failed') etaHtml='<span style="color:var(--bad)">Halted</span>';
+    else if(j.status==='active'){
+      const m=(currentWorkerModel||'').match(/ETA\s+([^)]+)/);
+      etaHtml=m?`<span style="color:var(--accent2);font-weight:600">~${esc(m[1])}</span>`:'<span class="dim">calculating…</span>';
+    }
+
+    let ev='';
+    if(open){
+      ev=`<tr class="evrow"><td colspan="7">
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <strong style="color:var(--fg);font-size:12.5px">Job #${j.queue_id} · Detailed Inspector</strong>
+            <span class="mono dim">Stage: <strong style="color:var(--accent2)">${esc(curStage)}</strong></span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;background:var(--surface2);padding:10px;border-radius:4px;margin-bottom:10px;font-size:11.5px">
+            <div><div class="dim">Active Step</div><div class="mono" style="color:var(--accent2);font-weight:600">${esc(curStage)}</div></div>
+            <div><div class="dim">Stage Progress</div><div class="mono" style="font-weight:600">${esc(currentWorkerModel||'—')}</div></div>
+            <div><div class="dim">Stage ETA</div><div class="mono">${etaHtml}</div></div>
+            <div><div class="dim">GPU VRAM</div><div class="mono">${lastGpu.used_mb?`${(lastGpu.used_mb/1024).toFixed(1)} / ${(lastGpu.total_mb/1024).toFixed(1)} GB`:'—'}</div></div>
+            <div><div class="dim">GPU Util</div><div class="mono" style="color:var(--ok);font-weight:600">${lastGpu.util_pct!=null?lastGpu.util_pct+'%':'—'}</div></div>
+          </div>
+
+          <div style="font-size:10.5px;font-weight:600;color:var(--fgdim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Timeline Log</div>
+          <div class="ev-scroll" data-qid="${j.queue_id}" style="max-height:160px;overflow-y:auto;font-family:var(--mono);font-size:11px">
+            ${st.length?st.map(e=>`
+              <div style="padding:3px 0;display:flex;gap:10px;border-bottom:1px solid rgba(255,255,255,.03)">
+                <span class="dim">[${esc((e.ts||'').replace('T',' ').slice(11,19))}]</span>
+                <span style="font-weight:600;color:${e.status==='done'?'var(--ok)':e.status==='started'?'var(--accent2)':'var(--bad)'}">${esc(e.stage)}</span>
+                <span class="dim">${esc(e.status)}${e.detail?' · '+esc(e.detail):''}</span>
+                ${e.err?`<div style="color:var(--bad)">${esc(e.err.slice(-250))}</div>`:''}
+              </div>`).join(''):'<div class="dim">No events logged yet.</div>'}
+          </div>
+        </div>
+      </td></tr>`;
+    }
+
+    return `<tr class="jobrow" onclick="toggleEv(${j.queue_id})">
+      <td class="mono">${j.queue_id}</td>
+      <td class="mono" style="font-weight:600">${esc(j.code)}</td>
+      <td>
+        <span class="st"><span class="dot ${dotC}"></span>${j.status}</span><br>
+        <span class="dim" style="font-size:10.5px">${j.status==='active'?`step ${doneN+1}/10 · ${esc(curStage)}`:j.status==='done'?'10/10 done':j.status==='failed'?'failed':''}</span>
+      </td>
+      <td class="mono" style="font-size:11.5px">${etaHtml}</td>
+      <td>${j.priority}</td>
+      <td><span class="segs">${segs}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="tiny" onclick="toggleEv(${j.queue_id})">${open?'▲ Less':'▼ Details'}</button>
+      </td>
+    </tr>${ev}`;
+  }).join('');
+
+  document.querySelectorAll('.ev-scroll').forEach(el=>{
+    if(scrollMap[el.dataset.qid]!==undefined){el.scrollTop=scrollMap[el.dataset.qid];}
+  });
+}
+
+function toggleEv(qid){expanded.has(qid)?expanded.delete(qid):expanded.add(qid);renderJobs();}
+function filterJobs(s){document.getElementById('jobfilter').value=s;renderJobs();}
+async function pause(p){try{await api('/api/admin/pause?paused='+p,{method:'POST'});poll();}catch(e){toast('pause failed: '+e.message,true);}}
+
+/* Update Left Panel Pipeline Journey */
+function updatePipelineJourney(){
+  const activeJob = jobs.find(j=>j.status==='active') || jobs[0];
+  const byStage = {};
+  let activeStage = null;
+  if(activeJob && activeJob.events){
+    activeJob.events.forEach(e=>{
+      if(e.status==='failed' && e.detail && e.detail.startsWith('parse shot')) return;
+      byStage[e.stage]=e.status;
+    });
+    if(activeJob.status === 'active'){
+      const wm = (currentWorkerModel || '').split(/[\s(]/)[0];
+      if(STAGES.includes(wm)){
+        activeStage = wm;
+      }else{
+        const lastStarted = [...activeJob.events].reverse().find(e => e.status === 'started');
+        activeStage = lastStarted ? lastStarted.stage : null;
+      }
+    }
+  }
+
+  STAGES.forEach(s=>{
+    const card = document.getElementById('sc-'+s);
+    const tag = document.getElementById('stg-'+s);
+    if(!card) return;
+    const st = byStage[s];
+    card.classList.remove('active','done');
+    if(s === activeStage){
+      card.classList.add('active');
+      tag.textContent = 'running';
+      tag.style.color = '';
+    }else if(st === 'done'){
+      card.classList.add('done');
+      tag.textContent = 'done ✓';
+      tag.style.color = '';
+    }else if(st === 'failed' && activeJob && activeJob.status === 'failed'){
+      tag.textContent = 'failed ✕';
+      tag.style.color = 'var(--bad)';
+    }else{
+      tag.textContent = 'queued';
+      tag.style.color = '';
+    }
+  });
+
+  // Active progress indicators
+  const pShotvl = document.getElementById('prog-shotvl');
+  const pVlm = document.getElementById('prog-vlm');
+  const pWhisper = document.getElementById('prog-whisper');
+  const pScene = document.getElementById('prog-scenedetect');
+
+  if(activeStage === 'shotvl'){
+    pShotvl.style.display = 'block';
+    const m = (currentWorkerModel||'').match(/(\d+)\/(\d+)\s+·\s+(\d+)%/);
+    if(m){
+      document.getElementById('txt-shotvl').textContent = `${m[1]} / ${m[2]} shots (${m[3]}%)`;
+      document.getElementById('bar-shotvl').style.width = m[3] + '%';
+    }
+  } else {
+    pShotvl.style.display = 'none';
+  }
+
+  if(activeStage === 'vlm'){
+    pVlm.style.display = 'block';
+    const m = (currentWorkerModel||'').match(/(\d+)\/(\d+)\s+·\s+(\d+)%/);
+    if(m){
+      document.getElementById('txt-vlm').textContent = `${m[1]} / ${m[2]} shots (${m[3]}%)`;
+      document.getElementById('bar-vlm').style.width = m[3] + '%';
+    }
+  } else {
+    pVlm.style.display = 'none';
+  }
+
+  pWhisper.style.display = (activeStage === 'whisper') ? 'block' : 'none';
+  pScene.style.display = (activeStage === 'scenedetect') ? 'block' : 'none';
+}
+
+/* Poll GPU (every 1s) */
+async function pollGpu(){
+  try{
+    const g=await api('/api/admin/gpu');
+    lastGpu=g;
+    if(!g.available){document.getElementById('gpuname').textContent=g.note;return;}
+    document.getElementById('gpuname').textContent=g.name;
+    document.getElementById('g-vram').textContent=`${(g.used_mb/1024).toFixed(1)} / ${(g.total_mb/1024).toFixed(1)} GB`;
+    document.getElementById('g-vrambar').style.width=(g.used_mb/g.total_mb*100)+'%';
+    document.getElementById('g-util').textContent=(g.util_pct!=null?g.util_pct:'0')+'%';
+    document.getElementById('g-temp').textContent=(g.temp_c!=null?g.temp_c:'—')+'°C';
+    document.getElementById('g-power').textContent=(g.power_w!=null?Math.round(g.power_w)+' W / 170 W':'—');
+  }catch(e){}
+  try{
+    const q=await api('/api/admin/queue');
+    currentWorkerModel=q.worker.model||'';
+    document.getElementById('g-model').textContent=currentWorkerModel||'idle';
+  }catch(e){}
+}
+
+/* Poll Stats (every 1s) */
 async function pollStats(){
   try{
-    const s=await(await fetch('/api/admin/stats')).json();
-    document.getElementById('stat-files').textContent=s.files;
-    document.getElementById('stat-shots').textContent=s.shots;
-    document.getElementById('stat-utter').textContent=s.utterances;
-    document.getElementById('stat-scenes').textContent=s.scenes;
-    document.getElementById('stat-queue').textContent=s.pending;
-    document.getElementById('stat-failed').textContent=s.failed;
-    document.getElementById('stat-extra').innerHTML=`Source volume: <b>${fmtSize(s.source_bytes)}</b> · corrections: ${s.corrections} · active jobs: ${s.active}`;
-    const moods=(s.top_moods||[]).map(m=>`<span class="pill">${esc(m.mood)} ${m.n}</span>`).join('');
-    const moves=(s.top_movements||[]).map(m=>`<span class="pill">${esc(m.movement)} ${m.n}</span>`).join('');
-    document.getElementById('stat-top').innerHTML=(moods?`<div style="font-size:10px;color:var(--fg-dim);text-transform:uppercase">Top moods</div>${moods}`:'')+(moves?`<div style="font-size:10px;color:var(--fg-dim);text-transform:uppercase;margin-top:6px">Top camera moves</div>${moves}`:'');
+    const s=await api('/api/admin/stats');
+    document.getElementById('s-files').textContent=s.files;
+    document.getElementById('s-shots').textContent=s.shots.toLocaleString();
+    document.getElementById('s-utts').textContent=s.utterances.toLocaleString()+' utterances · '+s.scenes+' scenes';
+    document.getElementById('s-queue').textContent=s.pending+' pend / '+s.active+' act';
+    document.getElementById('s-vol').textContent=fmtSize(s.source_bytes)+' · '+s.corrections+' corrections';
+    document.getElementById('s-failed').textContent=s.failed;
+    document.getElementById('s-gpu').textContent=s.gpu?`${s.gpu.name} · ${s.gpu.util_pct}% · ${(s.gpu.used_mb/1024).toFixed(1)}GB`:'GPU stats via worker';
+    document.getElementById('tile-failed').style.opacity=s.failed?1:.5;
   }catch(e){}
 }
 
+/* Right Panel: Media Library */
 async function pollLibrary(){
   try{
-    const d=await(await fetch('/api/admin/library')).json();
-    libfiles=d.files;renderLibrary(document.getElementById('libfilter').value);
-  }catch(e){}
+    libfiles=(await api('/api/admin/library')).files;
+    renderLibrary();
+  }catch(e){
+    document.getElementById('liblist').innerHTML='<div class="empty">Failed loading library.</div>';
+  }
 }
-function renderLibrary(f){
-  f=(f||'').toLowerCase();
-  const rows=libfiles.filter(x=>!f||x.code.toLowerCase().includes(f)||x.path.toLowerCase().includes(f));
-  document.getElementById('libbody').innerHTML=rows.length?rows.map(x=>`<tr>
-    <td><code>${esc(x.code)}</code></td><td style="font-size:11px;font-family:monospace;color:var(--fg-dim)">${esc(x.path)}</td>
-    <td class="st-${x.status==='done'?'done':x.status==='failed'?'failed':'active'}">${x.status}</td>
-    <td>${fmtDur(x.duration_s)}</td><td>${fmtSize(x.size_bytes)}</td><td>${x.shots}</td><td>${x.utterances}</td>
-    <td><button class="tiny ghost" onclick="delFile(${x.file_id},'${esc(x.code)}')">Remove</button></td></tr>`).join('')
-    :'<tr><td colspan="8" style="color:var(--fg-dim)">No files indexed yet.</td></tr>';
+
+function renderLibrary(){
+  const f=(document.getElementById('libfilter').value||'').toLowerCase();
+  const rows=libfiles.filter(x=>!f||x.code.toLowerCase().includes(f)||x.path.toLowerCase().includes(f)||(x.category||'').toLowerCase().includes(f));
+  const el=document.getElementById('liblist');
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'+(libfiles.length?'No matching files.':'Library is empty.')+'</div>';
+    return;
+  }
+  el.innerHTML=rows.map(x=>`
+    <div class="lib-card">
+      <div class="lib-top">
+        <span class="lib-code">${esc(x.code)}</span>
+        ${x.category?`<span class="lib-cat">${esc(x.category)}</span>`:''}
+        <span class="st" style="margin-left:auto"><span class="dot ${x.status==='done'?'':x.status==='failed'?'bad':'idle'}"></span>${x.status}</span>
+      </div>
+      <div class="lib-path">${esc(x.path)}</div>
+      <div class="lib-meta">
+        <span>⏱ ${fmtDur(x.duration_s)}</span>
+        <span>💾 ${fmtSize(x.size_bytes)}</span>
+        <span>🎬 ${x.shots} shots</span>
+        <span>💬 ${x.utterances} utt</span>
+      </div>
+      <div class="lib-actions">
+        <button class="tiny primary" onclick="location='/?file_code='+encodeURIComponent('${esc(x.code)}')">Search File</button>
+        <button class="tiny" id="del_${x.file_id}" onclick="delFile(${x.file_id},'${esc(x.code)}')">Remove</button>
+      </div>
+    </div>
+  `).join('');
 }
+
 async function delFile(id,code){
-  if(!confirm(`Remove ${code} from the library DB (keeps the source file on disk)?`))return;
-  const r=await fetch(`/api/admin/library/${id}/delete`,{method:'POST'});
-  if(r.ok){pollLibrary();pollStats();pollAll();}else alert('delete failed: '+r.status);
+  const b=document.getElementById('del_'+id);
+  if(!b.classList.contains('armed')){
+    b.classList.add('armed');
+    b.textContent='Confirm? (source stays on disk)';
+    setTimeout(()=>{b.classList.remove('armed');b.textContent='Remove';},3500);
+    return;
+  }
+  try{
+    await api(`/api/admin/library/${id}/delete`,{method:'POST'});
+    toast(code+' removed from library');
+    pollLibrary();pollStats();
+  }catch(e){toast('remove failed: '+e.message,true);}
 }
 
-async function pollSchemes(){
+/* Model Config Updates from Left Panel */
+async function loadConfig(){
   try{
-    const d=await(await fetch('/api/admin/schemes')).json();
-    document.getElementById('schbody').innerHTML=d.schemes.map(s=>`<tr>
-      <td><b>${esc(s.name)}</b>${s.default?' <span class="badge">default</span>':''}</td><td><code>${esc(s.prefix)}</code></td>
-      <td>${s.pad}</td><td>${s.next}</td><td>${s.rename?'yes':'no'}</td>
-      <td>${s.default?'—':`<button class="tiny ghost" onclick="setDefault('${esc(s.name)}')">make default</button>`}</td>
-      <td><button class="tiny ghost" onclick="resetCounter('${esc(s.name)}',${s.pad},'${esc(s.prefix)}',${s.rename})">reset counter</button></td></tr>`).join('')
-      ||'<tr><td colspan="7" style="color:var(--fg-dim)">No schemes.</td></tr>';
+    const c=await api('/api/admin/config');
+    if(c.models){
+      if(c.models.whisper) document.getElementById('m-whisper').value=c.models.whisper;
+      if(c.models.vlm) document.getElementById('m-vlm').value=c.models.vlm;
+      if(c.models.narrative) document.getElementById('m-narrative').value=c.models.narrative;
+    }
   }catch(e){}
 }
-async function setDefault(name){await fetch(`/api/admin/schemes?name=${encodeURIComponent(name)}&set_default=true`,{method:'POST'});pollSchemes();}
-async function resetCounter(name,pad,prefix,rename){await fetch(`/api/admin/schemes?name=${encodeURIComponent(name)}&prefix=${prefix}&pad=${pad}&next=1&rename=${rename}`,{method:'POST'});pollSchemes();}
-async function addScheme(){
-  const n=document.getElementById('sname').value.trim(),p=document.getElementById('sprefix').value.trim()||'SPOT';
-  if(!n)return;
-  await fetch(`/api/admin/schemes?name=${encodeURIComponent(n)}&prefix=${p}`,{method:'POST'});
-  document.getElementById('sname').value='';pollSchemes();
+
+async function updateModel(type,val){
+  try{
+    const c=await api('/api/admin/config');
+    if(!c.models) c.models={};
+    c.models[type]=val;
+    await api('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({models:c.models})});
+    toast(`Model updated: ${type} → ${val}`);
+  }catch(e){
+    toast('model update failed: '+e.message,true);
+  }
 }
 
-async function setTier(t){
-  const r=await fetch('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({tier:t})});
-  document.getElementById('mtmsg').textContent=r.ok?'Saved — applies to the next job':'error';
-}
-async function setResidency(p){
-  const r=await fetch('/api/admin/config',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({residency:p})});
-  document.getElementById('resmsg').textContent=r.ok?'Saved — worker picks it up on its next poll (≤5s)':'error';
-}
-function retry(id){fetch(`/api/admin/retry/${id}`,{method:'POST'}).then(()=>pollAll());}
-function pauseWorker(p){fetch('/api/admin/pause?paused='+p,{method:'POST'}).then(()=>pollAll());}
-
-async function initControls(){
-  const t=await(await fetch('/api/admin/config')).json().catch(()=>({tier:'tier_full',residency:'sequential'}));
-  document.getElementById('mtier').innerHTML=tiers.map(x=>`<option value="${x.v}">${x.l}</option>`).join('');
-  document.getElementById('mtier').value=t.tier||'tier_full';
-  const r=await(await fetch('/api/admin/residency')).json().catch(()=>({profiles:{sequential:{label:'Sequential (12GB)'}}}));
-  document.getElementById('residency').innerHTML=Object.entries(r.profiles).map(([k,v])=>
-    `<option value="${k}">${v.label}</option>`).join('');
-  document.getElementById('residency').value=r.current||'sequential';
-}
-
-initControls();pollAll();pollStats();pollLibrary();pollSchemes();
-setInterval(()=>{pollAll();pollStats();},5000);
-setInterval(()=>{pollLibrary();pollSchemes();},15000);
+/* Init & 1-Second Periodic Updates */
+poll();pollStats();pollGpu();pollLibrary();loadConfig();
+setInterval(()=>{poll();pollGpu();pollStats();}, 1000);
+setInterval(pollLibrary, 10000);
 </script>
 </body></html>
